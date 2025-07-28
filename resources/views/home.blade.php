@@ -7,6 +7,95 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
+    <!-- Custom Styles for Feedback Button and Dialog -->
+    <style>
+        #feedback-form {
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        #open-feedback-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 16px;
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            padding: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            z-index: 40;
+        }
+
+        #open-feedback-btn:hover {
+            background: linear-gradient(135deg, #1e3a8a, #2563eb);
+            transform: scale(1.1) rotate(5deg);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        #open-feedback-btn i {
+            font-size: 24px;
+        }
+
+        #open-feedback-btn span {
+            display: none;
+            position: absolute;
+            right: 60px;
+            background: #1e40af;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        #open-feedback-btn:hover span {
+            display: block;
+            opacity: 1;
+        }
+
+        #feedback-form .close-btn {
+            transition: transform 0.2s ease, color 0.2s ease;
+        }
+
+        #feedback-form .close-btn:hover {
+            transform: rotate(90deg);
+            color: #dc2626;
+        }
+
+        #feedback-form .submit-btn:hover {
+            background: linear-gradient(135deg, #1e3a8a, #2563eb);
+            transform: translateY(-1px);
+        }
+
+        #feedback-form .form-field {
+            transition: all 0.2s ease;
+        }
+
+        #feedback-form .form-field:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+    </style>
+
     <!-- Guide Modal -->
     <div id="guideModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 hidden">
         <div class="bg-white rounded-2xl shadow-xl max-w-[90vw] w-full md:w-3/4 lg:w-1/2 max-h-[90vh] overflow-y-auto relative">
@@ -190,47 +279,76 @@
     </div>
 
     <!-- Feedback Button -->
-    <button id="openFeedbackModal" class="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition transform hover:scale-105 z-50">
-        <i class="fas fa-comment-alt text-xl"></i>
+    <button id="open-feedback-btn" class="fixed bottom-6 right-6 z-40">
+        <i class="fas fa-comment-alt"></i>
+        <span>Feedback</span>
     </button>
 
-    <!-- Feedback Modal (New Form with Nom Utilisateur, Commentaire, Note) -->
-    <div id="feedbackModal" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white p-6 rounded-2xl shadow-xl max-w-[20rem] w-full hidden z-50">
-        <button id="closeFeedbackModal" class="text-gray-700 hover:text-red-600 font-bold text-xl absolute top-2 right-2">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-        </button>
-        <h2 class="text-xl font-kollektif text-blue-900 mb-4">Donnez Votre Avis</h2>
-        <form action="https://fabform.io/f/{form-id}" method="post" class="space-y-4">
-            <div>
-                <label for="username" class="block text-sm font-medium text-gray-600">Nom Utilisateur:</label>
-                <input type="text" id="username" name="username" required
-                       class="mt-1 p-2 w-full border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm">
+    <!-- Feedback Dialog -->
+    <div id="feedback-form" class="fixed bottom-16 right-16 z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div class="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-5 flex justify-between items-center">
+                <h3 class="text-xl font-kollektif">Votre Avis Compte</h3>
+                <button id="close-feedback-btn" class="close-btn text-white hover:text-red-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
             </div>
-            <div>
-                <label for="comment" class="block text-sm font-medium text-gray-600">Commentaire:</label>
-                <textarea id="comment" name="comment" rows="3" required
-                          class="mt-1 p-2 w-full border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
-                          placeholder="Partagez vos impressions ou suggestions..."></textarea>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-600">Note:</label>
-                <div id="starRating" class="flex space-x-1 mt-1">
-                    <i class="fas fa-star text-lg text-gray-300 cursor-pointer hover:text-yellow-400" data-rating="1"></i>
-                    <i class="fas fa-star text-lg text-gray-300 cursor-pointer hover:text-yellow-400" data-rating="2"></i>
-                    <i class="fas fa-star text-lg text-gray-300 cursor-pointer hover:text-yellow-400" data-rating="3"></i>
-                    <i class="fas fa-star text-lg text-gray-300 cursor-pointer hover:text-yellow-400" data-rating="4"></i>
-                    <i class="fas fa-star text-lg text-gray-300 cursor-pointer hover:text-yellow-400" data-rating="5"></i>
+            <form action="{{ route('avis.store') }}" method="post" class="p-6 space-y-5" id="avis-form">
+                @csrf
+                <div>
+                    <label for="user-name" class="block text-sm font-medium text-gray-700 mb-1">Nom Utilisateur</label>
+                    <input type="text" id="user-name" name="nom_utilisateur" required 
+                           class="form-field w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
                 </div>
-                <input type="hidden" id="ratingValue" name="rating" value="0">
+                <div>
+                    <label for="user-comment" class="block text-sm font-medium text-gray-700 mb-1">Commentaire</label>
+                    <textarea id="user-comment" name="commentaire" rows="4" required
+                              class="form-field w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition resize-none"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Note</label>
+                    <div class="flex space-x-2">
+                        <i class="fas fa-star text-xl text-gray-300 cursor-pointer hover:text-yellow-400 transition" data-rating="1"></i>
+                        <i class="fas fa-star text-xl text-gray-300 cursor-pointer hover:text-yellow-400 transition" data-rating="2"></i>
+                        <i class="fas fa-star text-xl text-gray-300 cursor-pointer hover:text-yellow-400 transition" data-rating="3"></i>
+                        <i class="fas fa-star text-xl text-gray-300 cursor-pointer hover:text-yellow-400 transition" data-rating="4"></i>
+                        <i class="fas fa-star text-xl text-gray-300 cursor-pointer hover:text-yellow-400 transition" data-rating="5"></i>
+                    </div>
+                    <input type="hidden" id="user-rating" name="note" value="0">
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" id="cancel-feedback-btn" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition font-medium">Annuler</button>
+                    <button type="submit" id="submit-avis-btn" class="submit-btn bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition font-medium flex items-center">
+                        <span>Envoyer</span>
+                    </button>
+                </div>
+                
+                <!-- État du formulaire -->
+                <div id="form-status" class="hidden mt-4">
+                    <!-- Loader -->
+                    <div id="avis-loader" class="flex items-center justify-center">
+                        <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="ml-2 text-blue-600">Envoi en cours...</span>
+                    </div>
+                    
+                    <!-- Succès -->
+                    <div id="avis-success" class="hidden items-center justify-center">
+                        <svg class="h-6 w-6 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span class="ml-2 text-green-600">Votre avis a été envoyé avec succès!</span>
+                    </div>
+                </div>
+            </form>
+            <div class="px-6 pb-4 text-xs text-gray-500 text-center">
+                <a href="https://fabform.io" target="_blank" class="hover:text-blue-600 transition">Powered by FabForm.io</a>
             </div>
-            <div class="flex justify-end space-x-2">
-                <button type="button" id="cancelFeedback" class="bg-gray-200 text-gray-700 py-1.5 px-4 rounded-lg hover:bg-gray-300 transition text-sm">Annuler</button>
-                <button type="submit" id="submitFeedback" class="bg-blue-600 text-white py-1.5 px-4 rounded-lg hover:bg-blue-700 transition text-sm">Soumettre</button>
-            </div>
-        </form>
-        <a href="https://fabform.io" target="_blank" class="text-gray-700 hover:text-blue-500 text-xs mt-4 block text-center">Powered By FabForm.io</a>
+        </div>
     </div>
 
     <!-- Rest of the Page Content -->
@@ -293,8 +411,8 @@
     <section>
         <div class="text-gray-900 pt-16 pb-24 px-6 w-full bg-gray-50">
             <div class="max-w-7xl mx-auto text-center">
-                <h2 class="text-4xl font-bold mb-6 text-gray-800">Our Impact </h2>
-                <p class="text-lg text-gray-600 mb-16">Join thousands who trust our platform </p>
+                <h2 class="text-4xl font-bold mb-6 text-gray-800">Our Impact</h2>
+                <p class="text-lg text-gray-600 mb-16">Join thousands who trust our platform</p>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
                     <!-- User Count -->
                     <div class="flex flex-col items-center p-8 bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow">
@@ -339,46 +457,56 @@
 
     <section class="bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <div class="max-w-7xl mx-auto">
-            <h2 class="text-3xl font-extrabold text-gray-900 text-center mb-10">What People Are Saying</h2>
-            <div class="flex flex-wrap gap-6 justify-center">
+            <h2 class="text-3xl font-extrabold text-gray-900 text-center mb-10">Ce que nos utilisateurs pensent</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 justify-items-center">
+                @php
+                    // Récupérer les avis visibles et les mélanger aléatoirement
+                    $avis = \App\Models\Avis::where('etat', 'visible')->inRandomOrder()->take(3)->get();
+                @endphp
+                
+                @forelse($avis as $a)
                 <!-- Testimonial Card -->
-                <div class="bg-white shadow-md rounded-2xl p-6 max-w-sm flex flex-col items-start hover:shadow-xl transition">
+                <div class="bg-white shadow-md rounded-2xl p-6 w-full max-w-md flex flex-col items-start hover:shadow-xl transition">
                     <div class="flex items-center mb-4">
-                        <img class="w-12 h-12 rounded-full border-2 border-indigo-500" src="https://i.pravatar.cc/150?img=12" alt="User avatar">
+                        <div class="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
+                            {{ strtoupper(substr($a->nom_utilisateur, 0, 1)) }}
+                        </div>
                         <div class="ml-4">
-                            <h4 class="text-lg font-semibold text-gray-900">Sarah Williams</h4>
-                            <p class="text-sm text-gray-500">Product Designer</p>
+                            <h4 class="text-lg font-semibold text-gray-900">{{ $a->nom_utilisateur }}</h4>
+                            <div class="flex mt-1">
+                                @for($i = 1; $i <= 5; $i++)
+                                    @if($i <= $a->note)
+                                        <i class="fas fa-star text-yellow-400"></i>
+                                    @else
+                                        <i class="fas fa-star text-gray-300"></i>
+                                    @endif
+                                @endfor
+                            </div>
                         </div>
                     </div>
-                    <p class="text-gray-600 text-sm">"This UI was a game-changer for our product launch. Everything was smooth and pixel-perfect. Highly recommend!"</p>
+                    <p class="text-gray-600 text-sm">"{{ $a->commentaire }}"</p>
+                    <p class="text-gray-400 text-xs mt-3">{{ $a->created_at->format('d/m/Y') }}</p>
                 </div>
-                <!-- Testimonial Card -->
-                <div class="bg-white shadow-md rounded-2xl p-6 max-w-sm flex flex-col items-start hover:shadow-xl transition">
+                @empty
+                <!-- Testimonial Card par défaut si aucun avis -->
+                <div class="bg-white shadow-md rounded-2xl p-6 w-full max-w-md flex flex-col items-start hover:shadow-xl transition">
                     <div class="flex items-center mb-4">
-                        <img class="w-12 h-12 rounded-full border-2 border-indigo-500" src="https://i.pravatar.cc/150?img=32" alt="User avatar">
+                        <div class="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
+                            P
+                        </div>
                         <div class="ml-4">
-                            <h4 class="text-lg font-semibold text-gray-900">Michael</h4>
-                            <p class="text-sm text-gray-500">Startup Founder</p>
+                            <h4 class="text-lg font-semibold text-gray-900">Premier Avis</h4>
+                            <p class="text-sm text-gray-500">Soyez le premier à donner votre avis!</p>
                         </div>
                     </div>
-                    <p class="text-gray-600 text-sm">"Impressive responsiveness and design consistency. The attention to detail is what makes this shine!"</p>
+                    <p class="text-gray-600 text-sm">Cliquez sur le bouton "Feedback" en bas à droite pour partager votre expérience avec nous.</p>
                 </div>
-                <!-- Testimonial Card -->
-                <div class="bg-white shadow-md rounded-2xl p-6 max-w-sm flex flex-col items-start hover:shadow-xl transition">
-                    <div class="flex items-center mb-4">
-                        <img class="w-12 h-12 rounded-full border-2 border-indigo-500" src="https://i.pravatar.cc/150?img=22" alt="User avatar">
-                        <div class="ml-4">
-                            <h4 class="text-lg font-semibold text-gray-900">John</h4>
-                            <p class="text-sm text-gray-500">Frontend Developer</p>
-                        </div>
-                    </div>
-                    <p class="text-gray-600 text-sm">"Clean layout, optimized for mobile, and extremely flexible with Tailwind. Loved using it!"</p>
-                </div>
+                @endforelse
             </div>
         </div>
     </section>
 
-    <!-- JavaScript for Modal Navigation, Feedback Modal, and Three.js -->
+    <!-- JavaScript for Modal Navigation, Feedback Dialog, and Three.js -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Guide Modal Logic
@@ -435,61 +563,108 @@
             // Initialize first section
             showSection(0);
 
-            // Feedback Modal Logic
-            const feedbackModal = document.getElementById('feedbackModal');
-            const openFeedbackModal = document.getElementById('openFeedbackModal');
-            const closeFeedbackModal = document.getElementById('closeFeedbackModal');
-            const cancelFeedback = document.getElementById('cancelFeedback');
-            const submitFeedback = document.getElementById('submitFeedback');
-            const stars = document.querySelectorAll('#starRating .fa-star');
-            const ratingValue = document.getElementById('ratingValue');
+            // Feedback Dialog Logic
+            const feedbackForm = document.getElementById('feedback-form');
+            const openFeedbackBtn = document.getElementById('open-feedback-btn');
+            const closeFeedbackBtn = document.getElementById('close-feedback-btn');
+            const cancelFeedbackBtn = document.getElementById('cancel-feedback-btn');
+            const stars = document.querySelectorAll('#feedback-form .fa-star');
+            const ratingInput = document.getElementById('user-rating');
 
-            // Open feedback modal
-            openFeedbackModal.addEventListener('click', () => {
-                feedbackModal.classList.remove('hidden');
+            // Open feedback form
+            openFeedbackBtn.addEventListener('click', () => {
+                feedbackForm.style.display = 'block';
             });
 
-            // Close feedback modal
-            closeFeedbackModal.addEventListener('click', () => {
-                feedbackModal.classList.add('hidden');
+            // Close feedback form
+            function closeForm() {
+                feedbackForm.style.display = 'none';
                 resetFeedbackForm();
-            });
+            }
 
-            // Cancel feedback
-            cancelFeedback.addEventListener('click', () => {
-                feedbackModal.classList.add('hidden');
-                resetFeedbackForm();
-            });
+            closeFeedbackBtn.addEventListener('click', closeForm);
+            cancelFeedbackBtn.addEventListener('click', closeForm);
 
             // Star rating logic
             stars.forEach(star => {
                 star.addEventListener('click', () => {
-                    const rating = star.getAttribute('data-rating');
-                    ratingValue.value = rating;
-                    stars.forEach(s => {
-                        s.classList.toggle('text-yellow-400', s.getAttribute('data-rating') <= rating);
-                        s.classList.toggle('text-gray-300', s.getAttribute('data-rating') > rating);
+                    const rating = parseInt(star.getAttribute('data-rating'));
+                    ratingInput.value = rating;
+                    stars.forEach((s, i) => {
+                        s.classList.toggle('text-yellow-400', i < rating);
+                        s.classList.toggle('text-gray-300', i >= rating);
                     });
                 });
             });
 
-            // Submit feedback (logs to console for front-end demo)
-            submitFeedback.addEventListener('click', () => {
-                const username = document.getElementById('username').value;
-                const comment = document.getElementById('comment').value;
-                const rating = ratingValue.value;
-                console.log('Feedback submitted:', { username, comment, rating });
+            // Gestion de l'envoi du formulaire avec loader et message de succès
+            const avisForm = document.getElementById('avis-form');
+            const submitAvisBtn = document.getElementById('submit-avis-btn');
+            const formStatus = document.getElementById('form-status');
+            const avisLoader = document.getElementById('avis-loader');
+            const avisSuccess = document.getElementById('avis-success');
+
+            avisForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Vérifier que la note est sélectionnée
+                if (ratingInput.value === '0') {
+                    alert('Veuillez sélectionner une note');
+                    return;
+                }
+                
+                // Afficher le loader
+                formStatus.classList.remove('hidden');
+                formStatus.classList.add('flex');
+                avisLoader.classList.remove('hidden');
+                avisLoader.classList.add('flex');
+                avisSuccess.classList.add('hidden');
+                submitAvisBtn.disabled = true;
+                
+                // Envoyer le formulaire via AJAX
+                const formData = new FormData(avisForm);
+                
+                fetch(avisForm.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        // Cacher le loader et afficher le message de succès
+                        avisLoader.classList.remove('flex');
+                        avisLoader.classList.add('hidden');
+                        avisSuccess.classList.remove('hidden');
+                        avisSuccess.classList.add('flex');
+                        
+                        // Réinitialiser le formulaire après 2 secondes
+                        setTimeout(() => {
+                            resetFeedbackForm();
+                            closeForm();
+                        }, 2000);
+                    } else {
+                        throw new Error('Erreur lors de l\'envoi du formulaire');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    alert('Une erreur est survenue lors de l\'envoi de votre avis. Veuillez réessayer.');
+                    formStatus.classList.add('hidden');
+                    submitAvisBtn.disabled = false;
+                });
             });
 
             // Reset feedback form
             function resetFeedbackForm() {
-                ratingValue.value = '0';
+                ratingInput.value = '0';
                 stars.forEach(star => {
                     star.classList.add('text-gray-300');
                     star.classList.remove('text-yellow-400');
                 });
-                document.getElementById('username').value = '';
-                document.getElementById('comment').value = '';
+                document.getElementById('user-name').value = '';
+                document.getElementById('user-comment').value = '';
             }
 
             // Three.js Particle System for Hero Section

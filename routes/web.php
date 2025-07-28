@@ -17,6 +17,9 @@ Route::get('/', function () {
     return view('home');
 })->name('home');
 
+// Route publique pour les avis
+Route::post('/avis', [App\Http\Controllers\AvisController::class, 'store'])->name('avis.store');
+
 // Authentication routes
 Route::get('/auth', [AuthController::class, 'showAuthForm'])->name('auth.form');
 Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -82,6 +85,12 @@ Route::middleware(['auth'])->group(function () {
         ->name('reclamations.commentaires.index');
     Route::post('/comments', [CommentaireReclamationController::class, 'store'])->name('comments.store');
     Route::delete('/comments/{comment}', [CommentaireReclamationController::class, 'destroy'])->name('comments.destroy');
+
+
+    //Avis routes - Admin (protégées)
+    Route::get('/admin/avis', [App\Http\Controllers\AvisController::class, 'index'])->name('admin.avis');
+    Route::put('/admin/avis/{avis}', [App\Http\Controllers\AvisController::class, 'update'])->name('admin.avis.update');
+    Route::delete('/admin/avis/{avis}', [App\Http\Controllers\AvisController::class, 'destroy'])->name('admin.avis.destroy');
 
     //Mail routes
     Route::get('/test-email', function () {
