@@ -1,0 +1,191 @@
+body {
+    font-family: 'Kollectif', sans-serif;
+    line-height: 1.6;
+}
+
+h1, h2, h3, .button {
+    font-family: 'Kollectif', sans-serif;
+    font-weight: 700;
+}
+
+.hero {
+    height: 500px;
+}
+
+@media (max-width: 768px) {
+    .hero {
+        height: 60vh;
+    }
+    .hero h1 {
+        font-size: 2rem;
+    }
+    .hero p {
+        font-size: 1rem;
+    }
+}
+
+.button {
+    background-color: #3498db;
+    color: #ffffff;
+    padding: 10px 20px;
+    border-radius: 5px;
+    text-decoration: none;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.button:hover {
+    background-color: #2980b9;
+    transform: scale(1.05);
+}
+
+.nav-link {
+    color: #ffffff;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.nav-link:hover {
+    color: #3498db;
+}
+
+.content-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+@media (max-width: 768px) {
+    .content-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Modern Cards */
+.card-modern {
+    background: #fff;
+    border-radius: 1.5rem;
+    box-shadow: 0 8px 32px 0 rgba(31, 41, 55, 0.12);
+    padding: 2.5rem 2rem;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+.card-modern:hover {
+    transform: translateY(-8px) scale(1.03);
+    box-shadow: 0 16px 40px 0 rgba(37, 99, 235, 0.15);
+}
+
+/* Section titles */
+.section-title {
+    font-size: 2.5rem;
+    font-family: 'Kollectif', sans-serif;
+    color: #1e3a8a;
+    margin-bottom: 2rem;
+    font-weight: 700;
+    letter-spacing: -1px;
+}
+
+/* Gradient backgrounds */
+.bg-gradient-blue {
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+    color: #fff;
+}
+
+/* Call to action */
+.cta {
+    background: #fff;
+    color: #1e3a8a;
+    border-radius: 2rem;
+    padding: 2rem 3rem;
+    font-size: 1.3rem;
+    font-family: 'Kollectif', sans-serif;
+    font-weight: 700;
+    box-shadow: 0 4px 24px 0 rgba(37, 99, 235, 0.10);
+    transition: background 0.3s, color 0.3s, transform 0.3s;
+}
+.cta:hover {
+    background: #2563eb;
+    color: #fff;
+    transform: scale(1.04);
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(40px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+.animate-fadeInUp {
+    animation: fadeInUp 0.7s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+    background: #3b82f6;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #2563eb;
+}
+
+/* Utility classes */
+.text-blue-900 { color: #1e3a8a; }
+.text-blue-600 { color: #2563eb; }
+.bg-blue-100 { background: #dbeafe; }
+.bg-blue-900 { background: #1e3a8a; }
+
+/* Responsive grid for features */
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+}
+@media (max-width: 1024px) {
+    .feature-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+@media (max-width: 768px) {
+    .feature-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Smooth scroll */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Garantir le support du backdrop-filter */
+@supports (backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px)) {
+    #navbar {
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+    }
+}
+
+/* Fallback pour les navigateurs sans support */
+@supports not (backdrop-filter: blur(12px)) {
+    #navbar {
+        background-color: rgba(255, 255, 255, 0.95) !important;
+    }
+}
+
+/* Animation smooth */
+#navbar {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Correction pour le body padding */
+body {
+    padding-top: 72px; /* Hauteur de votre navbar */
+}
