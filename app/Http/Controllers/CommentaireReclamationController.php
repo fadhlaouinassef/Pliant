@@ -55,7 +55,13 @@ class CommentaireReclamationController extends Controller
             // Récupérer la réclamation associée avec le chargement explicite
             $reclamation = Reclamation::find($validated['id_reclamation']);
             
-            // Ne déclencher l'événement que si:
+            // S'assurer que la relation est correctement chargée pour l'événement
+            $comment->reclamation = $reclamation;
+            
+            // Variable pour suivre si nous devons envoyer une notification
+            $shouldSendNotification = false;
+            
+            // Conditions pour envoyer une notification au citoyen propriétaire:
             // 1. La réclamation existe
             // 2. La réclamation a un propriétaire (id_citoyen)
             // 3. Le commentaire n'est pas écrit par le propriétaire de la réclamation
@@ -63,18 +69,38 @@ class CommentaireReclamationController extends Controller
                 $reclamation->id_citoyen && 
                 $reclamation->id_citoyen != Auth::id()) {
                 
-                // S'assurer que la relation est correctement chargée
-                $comment->reclamation = $reclamation;
+                $shouldSendNotification = true;
                 
                 // Ajouter des logs pour le débogage
-                \Log::info('Sending notification for comment', [
+                \Log::info('Sending notification to citoyen for comment', [
                     'comment_id' => $comment->id,
                     'reclamation_id' => $reclamation->id,
                     'recipient_id' => $reclamation->id_citoyen,
                     'sender_id' => Auth::id()
                 ]);
+            }
+            
+            // Conditions pour envoyer une notification à l'agent assigné:
+            // 1. La réclamation existe
+            // 2. La réclamation a un agent assigné (agent_id)
+            // 3. Le commentaire n'est pas écrit par l'agent assigné
+            if ($reclamation && 
+                $reclamation->agent_id && 
+                $reclamation->agent_id != Auth::id()) {
                 
-                // Déclencher l'événement de notification
+                $shouldSendNotification = true;
+                
+                // Ajouter des logs pour le débogage
+                \Log::info('Sending notification to agent for comment', [
+                    'comment_id' => $comment->id,
+                    'reclamation_id' => $reclamation->id,
+                    'recipient_agent_id' => $reclamation->agent_id,
+                    'sender_id' => Auth::id()
+                ]);
+            }
+            
+            // Déclencher l'événement de notification si nécessaire
+            if ($shouldSendNotification) {
                 event(new NewCommentEvent($comment, Auth::user()));
             } else {
                 \Log::info('No notification sent for comment', [

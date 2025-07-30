@@ -10,6 +10,7 @@ use App\Http\Controllers\UtilisateurController;
 use App\Http\Controllers\ReclamationController;
 use App\Http\Controllers\CommentaireReclamationController;
 use App\Http\Controllers\InteractionController;
+use App\Http\Controllers\NotificationController;
 use Illuminate\Support\Facades\Broadcast;
 
 
@@ -48,6 +49,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', function () {
         return view('dashboard');
     })->middleware('verified')->name('dashboard');
+
+    // Notification routes
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::put('/notifications/{id}/mark-as-read', [NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
+    Route::put('/notifications/mark-all-as-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
 
     // Agent routes
     Route::get('/agent/reclamations', [ReclamationController::class, 'indexForAgent'])->name('agent.reclamations');

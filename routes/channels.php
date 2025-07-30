@@ -28,6 +28,17 @@ Broadcast::channel('reclamation.{userId}', function ($user, $userId) {
     return (int) $user->id === (int) $userId;
 });
 
+// Canal pour les notifications de commentaires aux agents
+Broadcast::channel('agent-reclamation.{userId}', function ($user, $userId) {
+    \Log::info('Agent channel authorization attempt', [
+        'channel' => 'agent-reclamation.'.$userId,
+        'requesting_user_id' => $user->id,
+        'channel_user_id' => $userId,
+        'authorized' => (int) $user->id === (int) $userId
+    ]);
+    return (int) $user->id === (int) $userId;
+});
+
 // Canal fictif pour les cas où la reclamation n'a pas d'id_citoyen
 Broadcast::channel('null-channel', function ($user) {
     return false; // Personne ne peut s'abonner à ce canal

@@ -5,11 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ config('app.name', 'Laravel') }} - Admin</title>
+    <title>{{ config('app.name', 'Laravel') }} - Agent</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+
+    <!-- Pusher JS -->
+    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+    <script sr                // Afficher une notification système
+                showSystemNotification(data) {
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        const notification = new Notification('Nouveau commentaire', {
+                            body: `${data.user_name} a commenté une réclamation que vous traitez`,
+                            icon: '/favicon.ico'
+                        });
+                        
+                        notification.onclick = () => {
+                            window.focus();
+                            this.navigateToReclamation(data.reclamation_id, data.id, data.db_id);
+                        };
+                    } else if ('Notification' in window && Notification.permission !== 'denied') {
+                        Notification.requestPermission();
+                    }
+                }sdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 
     <!-- Styles -->
     <style>
@@ -280,12 +299,58 @@
                     
                     <div class="flex items-center space-x-4">
                         <!-- Notification Icon -->
-                        <button class="p-1 text-gray-500 hover:text-gray-700 relative">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                            </svg>
-                            <span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-                        </button>
+                        <div class="relative" x-data="notifications">
+                            <button @click="notificationsOpen = !notificationsOpen" 
+                                    class="p-1 text-gray-500 hover:text-gray-700 relative">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                </svg>
+                                <span x-show="hasUnread" class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+                            </button>
+                            
+                            <!-- Dropdown de notifications -->
+                            <div x-show="notificationsOpen" 
+                                 @click.away="notificationsOpen = false" 
+                                 class="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg py-1 z-50"
+                                 x-cloak>
+                                <div class="px-4 py-2 flex justify-between items-center border-b border-gray-200">
+                                    <h3 class="font-semibold text-gray-800">Notifications</h3>
+                                    <button 
+                                        @click="markAllAsRead"
+                                        class="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                                        Tout marquer comme lu
+                                    </button>
+                                </div>
+                                
+                                <div x-show="notifications.length === 0" class="px-4 py-3 text-sm text-gray-500">
+                                    Aucune notification
+                                </div>
+                                
+                                <div class="max-h-64 overflow-y-auto">
+                                    <template x-for="notification in notifications" :key="notification.id">
+                                        <div @click="navigateToReclamation(notification.reclamation_id, notification.id, notification.db_id)"
+                                             :class="{'bg-blue-50': !notification.etat}"
+                                             class="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b border-gray-100">
+                                            <div class="flex items-start">
+                                                <div class="flex-shrink-0 mr-3">
+                                                    <div class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-semibold">
+                                                        <span x-text="notification.user_name.charAt(0)"></span>
+                                                    </div>
+                                                </div>
+                                                <div class="flex-1">
+                                                    <p class="text-sm font-medium text-gray-900" x-text="notification.message || (notification.user_name + ' a commenté une réclamation')"></p>
+                                                    <p class="text-sm text-gray-600 mt-1" x-text="notification.commentaire"></p>
+                                                    <p class="text-xs text-gray-500 mt-1" x-text="notification.created_at"></p>
+                                                </div>
+                                                <div x-show="!notification.etat" class="ml-2 flex-shrink-0">
+                                                    <span class="inline-block w-2 h-2 bg-blue-500 rounded-full"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
                         
                         <!-- Profile Dropdown -->
                         <div class="relative" x-data="{ open: false }">
@@ -353,6 +418,232 @@
                     Alpine.store('sidebar').mobileSidebarOpen = false;
                 }
             });
+        });
+    </script>
+    
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.store('sidebar', {
+                open: localStorage.getItem('sidebarOpen') === 'true' || window.innerWidth > 768,
+                toggle() {
+                    this.open = !this.open;
+                    localStorage.setItem('sidebarOpen', this.open);
+                }
+            });
+            
+            // Initialisation des notifications pour l'agent
+            Alpine.data('notifications', () => ({
+                notifications: [],
+                hasUnread: false,
+                notificationsOpen: false,
+                
+                init() {
+                    // Charger les notifications depuis la base de données via l'API
+                    this.loadDatabaseNotifications();
+                    
+                    // Initialiser Pusher avec debugging
+                    const pusher = new Pusher('3c83f1ff7345a4689785', {
+                        cluster: 'eu',
+                        encrypted: true,
+                        authEndpoint: '/broadcasting/auth',
+                        auth: {
+                            headers: {
+                                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            }
+                        }
+                    });
+                    
+                    // Enable Pusher debugging
+                    Pusher.logToConsole = true;
+                    
+                    // S'abonner au canal privé pour cet agent
+                    try {
+                        // The channel name should be 'agent-reclamation.userId'
+                        const channelName = 'agent-reclamation.{{ Auth::id() }}';
+                        console.log('Agent subscribing to channel:', channelName);
+                        
+                        const channel = pusher.subscribe('private-' + channelName);
+                        
+                        // Connection status debugging
+                        pusher.connection.bind('connected', () => {
+                            console.log('Connected to Pusher!');
+                            console.log('Connection state:', pusher.connection.state);
+                        });
+                        
+                        pusher.connection.bind('error', (err) => {
+                            console.error('Pusher connection error:', err);
+                        });
+                        
+                        // Écouter l'événement 'new.comment'
+                        channel.bind('new.comment', (data) => {
+                            console.log('Agent received new.comment event with data:', data);
+                            
+                            // Vérifier si cette notification existe déjà dans notre liste
+                            const exists = this.notifications.some(n => 
+                                n.db_id && n.reclamation_id === data.reclamation_id && 
+                                n.created_at === data.created_at
+                            );
+                            
+                            if (!exists) {
+                                // Ajouter un ID unique à la notification pour l'interface
+                                const notification = {
+                                    id: Date.now(),
+                                    db_id: null, // Ce n'est pas une notification de la BD
+                                    message: `${data.user_name} a commenté une réclamation que vous traitez`,
+                                    commentaire: data.commentaire,
+                                    reclamation_id: data.reclamation_id,
+                                    reclamation_titre: data.reclamation_titre,
+                                    user_name: data.user_name,
+                                    etat: false,
+                                    created_at: data.created_at
+                                };
+                                
+                                // Ajouter à la liste des notifications
+                                this.notifications.unshift(notification);
+                                
+                                // Mettre à jour l'indicateur de notifications non lues
+                                this.hasUnread = true;
+                                
+                                // Afficher une notification système si disponible
+                                this.showSystemNotification(notification);
+                            }
+                        });
+                        
+                        // Gestion des erreurs d'abonnement
+                        channel.bind('pusher:subscription_error', (status) => {
+                            console.error('Erreur d\'abonnement au canal', status);
+                        });
+                    } catch (error) {
+                        console.error('Erreur lors de l\'initialisation de Pusher:', error);
+                    }
+                },
+                
+                // Charger les notifications depuis la base de données
+                loadDatabaseNotifications() {
+                    fetch('/notifications')
+                        .then(response => response.json())
+                        .then(data => {
+                            // Transformer les notifications de la BD pour correspondre au format attendu
+                            const notifications = data.map(notification => ({
+                                id: Date.now() + Math.random(), // ID unique pour l'interface
+                                db_id: notification.id, // ID de la BD pour les actions
+                                message: notification.message,
+                                commentaire: notification.data?.commentaire || '',
+                                reclamation_id: notification.reclamation_id,
+                                reclamation_titre: notification.data?.reclamation_titre || 'Réclamation',
+                                user_name: notification.data?.user_name || '',
+                                etat: notification.etat,
+                                created_at: notification.created_at
+                            }));
+                            
+                            this.notifications = notifications;
+                            this.hasUnread = notifications.some(n => !n.etat);
+                        })
+                        .catch(error => {
+                            console.error('Erreur lors du chargement des notifications:', error);
+                        });
+                },
+                
+                // Méthode pour naviguer vers la réclamation concernée
+                navigateToReclamation(reclamationId, notificationId = null, dbId = null) {
+                    // Si c'est une notification de la BD, la marquer comme lue
+                    if (dbId) {
+                        this.markAsRead(dbId);
+                    }
+                    
+                    window.location.href = `/agent/reclamations?reclamation=${reclamationId}`;
+                    this.notificationsOpen = false;
+                    
+                    // Pour les notifications en temps réel sans ID de BD, on les gère côté client
+                    if (!dbId) {
+                        // Marquer la notification comme lue
+                        this.notifications.forEach(n => {
+                            if (n.id === notificationId) {
+                                n.etat = true;
+                            }
+                        });
+                    }
+                    
+                    // Vérifier s'il reste des notifications non lues
+                    this.hasUnread = this.notifications.some(n => !n.etat);
+                },
+                
+                // Marquer une notification comme lue dans la base de données
+                markAsRead(dbId) {
+                    if (!dbId) return;
+                    
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                    
+                    fetch(`/notifications/${dbId}/mark-as-read`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Mise à jour de l'état dans la liste locale
+                            this.notifications.forEach(n => {
+                                if (n.db_id === dbId) {
+                                    n.etat = true;
+                                }
+                            });
+                            
+                            // Vérifier s'il reste des notifications non lues
+                            this.hasUnread = this.notifications.some(n => !n.etat);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur lors du marquage comme lu:', error);
+                    });
+                },
+                
+                // Marquer toutes les notifications comme lues
+                markAllAsRead() {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                    
+                    fetch('/notifications/mark-all-as-read', {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Mise à jour de l'état dans la liste locale
+                            this.notifications.forEach(n => {
+                                n.etat = true;
+                            });
+                            
+                            this.hasUnread = false;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur lors du marquage de toutes les notifications comme lues:', error);
+                    });
+                },
+                
+                // Afficher une notification système
+                showSystemNotification(data) {
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        const notification = new Notification('Nouveau commentaire sur votre réclamation', {
+                            body: `${data.user_name} a commenté: ${data.commentaire}`,
+                            icon: '/images/logo.png'
+                        });
+                        
+                        notification.onclick = () => {
+                            window.focus();
+                            this.navigateToReclamation(data.reclamation_id);
+                        };
+                    } else if ('Notification' in window && Notification.permission !== 'denied') {
+                        Notification.requestPermission();
+                    }
+                }
+            }));
         });
     </script>
 </body>

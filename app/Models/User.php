@@ -28,5 +28,21 @@ class User extends Authenticatable
     {
         $this->attributes['mdp'] = bcrypt($value);
     }
+    
+    /**
+     * Relation avec les notifications
+     */
+    public function notifications()
+    {
+        return $this->hasMany(Notification::class, 'id_utilisateur');
+    }
+    
+    /**
+     * Récupérer les notifications non lues
+     */
+    public function unreadNotifications()
+    {
+        return $this->notifications()->where('etat', false);
+    }
 }
 ?>

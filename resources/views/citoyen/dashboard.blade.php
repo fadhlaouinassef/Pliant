@@ -298,8 +298,13 @@
                                  x-transition:leave-start="transform opacity-100 scale-100"
                                  x-transition:leave-end="transform opacity-0 scale-95">
                                 
-                                <div class="px-4 py-2 text-center border-b border-gray-200">
+                                <div class="px-4 py-2 flex justify-between items-center border-b border-gray-200">
                                     <h3 class="text-lg font-semibold text-gray-700">Notifications</h3>
+                                    <button 
+                                        @click="markAllAsRead"
+                                        class="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                                        Tout marquer comme lu
+                                    </button>
                                 </div>
                                 
                                 <div class="max-h-64 overflow-y-auto">
@@ -311,16 +316,20 @@
                                     
                                     <template x-for="notification in notifications" :key="notification.id">
                                         <a href="#" 
+                                           :class="{'bg-blue-50': !notification.etat}"
                                            class="block px-4 py-3 hover:bg-gray-50 border-b border-gray-100"
-                                           @click.prevent="navigateToReclamation(notification.reclamation_id)">
+                                           @click.prevent="navigateToReclamation(notification.reclamation_id, notification.id, notification.db_id)">
                                             <div class="flex items-start">
                                                 <div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
                                                     <span x-text="notification.user_name.charAt(0).toUpperCase()"></span>
                                                 </div>
                                                 <div class="ml-3 flex-1">
-                                                    <p class="text-sm font-medium text-gray-900" x-text="notification.user_name + ' a ajouté un commentaire'"></p>
-                                                    <p class="text-xs text-gray-500 mt-1">sur votre réclamation: <span class="font-semibold" x-text="notification.reclamation_titre"></span></p>
+                                                    <p class="text-sm font-medium text-gray-900" x-text="notification.message || (notification.user_name + ' a ajouté un commentaire')"></p>
+                                                    <p class="text-xs text-gray-500 mt-1" x-text="notification.commentaire"></p>
                                                     <p class="text-xs text-gray-400 mt-1" x-text="notification.created_at"></p>
+                                                </div>
+                                                <div x-show="!notification.etat" class="ml-2 flex-shrink-0">
+                                                    <span class="inline-block w-2 h-2 bg-blue-500 rounded-full"></span>
                                                 </div>
                                             </div>
                                         </a>
@@ -396,12 +405,8 @@
                 notificationsOpen: false,
                 
                 init() {
-                    // Récupérer les notifications stockées localement (si elles existent)
-                    const storedNotifications = localStorage.getItem('notifications');
-                    if (storedNotifications) {
-                        this.notifications = JSON.parse(storedNotifications);
-                        this.hasUnread = this.notifications.some(n => !n.read);
-                    }
+                    // Charger les notifications depuis la base de données via l'API
+                    this.loadDatabaseNotifications();
                     
                     // Initialiser Pusher avec debugging
                     const pusher = new Pusher('3c83f1ff7345a4689785', {
@@ -440,23 +445,37 @@
                         // Écouter l'événement 'new.comment'
                         channel.bind('new.comment', (data) => {
                             console.log('Received new.comment event with data:', data);
-                            // Ajouter un ID unique à la notification
-                            data.id = Date.now();
-                            data.read = false;
                             
-                            // Ajouter à la liste des notifications
-                            this.notifications.unshift(data);
+                            // Vérifier si cette notification existe déjà dans notre liste
+                            const exists = this.notifications.some(n => 
+                                n.db_id && n.reclamation_id === data.reclamation_id && 
+                                n.created_at === data.created_at
+                            );
                             
-                            // Sauvegarder les notifications dans le localStorage
-                            localStorage.setItem('notifications', JSON.stringify(this.notifications.slice(0, 20)));
-                            
-                            // Mettre à jour l'indicateur de notifications non lues
-                            this.hasUnread = true;
-                            
-                            // Afficher une notification système si disponible
-                            this.showSystemNotification(data);
+                            if (!exists) {
+                                // Ajouter un ID unique à la notification pour l'interface
+                                const notification = {
+                                    id: Date.now(),
+                                    db_id: null, // Ce n'est pas une notification de la BD
+                                    message: `${data.user_name} a commenté votre réclamation`,
+                                    commentaire: data.commentaire,
+                                    reclamation_id: data.reclamation_id,
+                                    reclamation_titre: data.reclamation_titre,
+                                    user_name: data.user_name,
+                                    etat: false,
+                                    created_at: data.created_at
+                                };
+                                
+                                // Ajouter à la liste des notifications
+                                this.notifications.unshift(notification);
+                                
+                                // Mettre à jour l'indicateur de notifications non lues
+                                this.hasUnread = true;
+                                
+                                // Afficher une notification système si disponible
+                                this.showSystemNotification(notification);
+                            }
                         });
-                        
                         // Gestion des erreurs d'abonnement
                         channel.bind('pusher:subscription_error', (status) => {
                             console.error('Erreur d\'abonnement au canal', status);
@@ -466,23 +485,113 @@
                     }
                 },
                 
+                // Charger les notifications depuis la base de données
+                loadDatabaseNotifications() {
+                    fetch('/notifications')
+                        .then(response => response.json())
+                        .then(data => {
+                            // Transformer les notifications de la BD pour correspondre au format attendu
+                            const notifications = data.map(notification => ({
+                                id: Date.now() + Math.random(), // ID unique pour l'interface
+                                db_id: notification.id, // ID de la BD pour les actions
+                                message: notification.message,
+                                commentaire: notification.data?.commentaire || '',
+                                reclamation_id: notification.reclamation_id,
+                                reclamation_titre: notification.data?.reclamation_titre || 'Réclamation',
+                                user_name: notification.data?.user_name || '',
+                                etat: notification.etat,
+                                created_at: notification.created_at
+                            }));
+                            
+                            this.notifications = notifications;
+                            this.hasUnread = notifications.some(n => !n.etat);
+                        })
+                        .catch(error => {
+                            console.error('Erreur lors du chargement des notifications:', error);
+                        });
+                },
+                
                 // Méthode pour naviguer vers la réclamation concernée
-                navigateToReclamation(reclamationId) {
+                navigateToReclamation(reclamationId, notificationId = null, dbId = null) {
+                    // Si c'est une notification de la BD, la marquer comme lue
+                    if (dbId) {
+                        this.markAsRead(dbId);
+                    }
+                    
                     window.location.href = `/citoyen/reclamations?reclamation=${reclamationId}`;
                     this.notificationsOpen = false;
                     
-                    // Marquer la notification comme lue
-                    this.notifications.forEach(n => {
-                        if (n.reclamation_id === reclamationId) {
-                            n.read = true;
-                        }
-                    });
+                    // Pour les notifications en temps réel sans ID de BD, on les gère côté client
+                    if (!dbId) {
+                        // Marquer la notification comme lue
+                        this.notifications.forEach(n => {
+                            if (n.id === notificationId) {
+                                n.etat = true;
+                            }
+                        });
+                    }
                     
                     // Vérifier s'il reste des notifications non lues
-                    this.hasUnread = this.notifications.some(n => !n.read);
+                    this.hasUnread = this.notifications.some(n => !n.etat);
+                },
+                
+                // Marquer une notification comme lue dans la base de données
+                markAsRead(dbId) {
+                    if (!dbId) return;
                     
-                    // Mettre à jour dans le localStorage
-                    localStorage.setItem('notifications', JSON.stringify(this.notifications));
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                    
+                    fetch(`/notifications/${dbId}/mark-as-read`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Mise à jour de l'état dans la liste locale
+                            this.notifications.forEach(n => {
+                                if (n.db_id === dbId) {
+                                    n.etat = true;
+                                }
+                            });
+                            
+                            // Vérifier s'il reste des notifications non lues
+                            this.hasUnread = this.notifications.some(n => !n.etat);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur lors du marquage comme lu:', error);
+                    });
+                },
+                
+                // Marquer toutes les notifications comme lues
+                markAllAsRead() {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                    
+                    fetch('/notifications/mark-all-as-read', {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Mise à jour de l'état dans la liste locale
+                            this.notifications.forEach(n => {
+                                n.etat = true;
+                            });
+                            
+                            this.hasUnread = false;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur lors du marquage de toutes les notifications comme lues:', error);
+                    });
                 },
                 
                 // Méthode pour afficher une notification système
@@ -495,7 +604,7 @@
                         
                         notification.onclick = () => {
                             window.focus();
-                            this.navigateToReclamation(data.reclamation_id);
+                            this.navigateToReclamation(data.reclamation_id, data.id, data.db_id);
                         };
                     } else if ('Notification' in window && Notification.permission !== 'denied') {
                         Notification.requestPermission();

@@ -11,6 +11,7 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 use App\Models\CommentaireReclamation;
 use App\Models\User;
+use App\Models\Notification;
 
 class NewCommentEvent implements ShouldBroadcast
 {
@@ -33,6 +34,116 @@ class NewCommentEvent implements ShouldBroadcast
             $comment->load('reclamation');
         }
         $this->reclamation = $comment->reclamation;
+        
+        // Enregistrer la notification en base de données
+        $this->storeNotifications();
+    }
+    
+    /**
+     * Enregistrer les notifications en base de données
+     */
+    protected function storeNotifications()
+    {
+        try {
+            \Log::info('Tentative d\'enregistrement de notification pour commentaire #' . $this->comment->id);
+            \Log::info('Détails réclamation: ID=' . ($this->reclamation->id ?? 'NULL') . 
+                      ', Citoyen ID=' . ($this->reclamation->id_citoyen ?? 'NULL') . 
+                      ', Agent ID=' . ($this->reclamation->agent_id ?? 'NULL'));
+            \Log::info('Auteur du commentaire ID=' . $this->comment->id_ecrivain);
+            \Log::info('Utilisateur connecté ID=' . $this->user->id);
+            
+            // Vérifier si l'utilisateur citoyen existe
+            if ($this->reclamation && $this->reclamation->id_citoyen) {
+                $userExists = \App\Models\User::where('id', $this->reclamation->id_citoyen)->exists();
+                \Log::info('Utilisateur citoyen ID=' . $this->reclamation->id_citoyen . ' existe: ' . ($userExists ? 'Oui' : 'Non'));
+            }
+            
+            // Vérifier si l'agent existe
+            if ($this->reclamation && $this->reclamation->agent_id) {
+                $agentExists = \App\Models\User::where('id', $this->reclamation->agent_id)->exists();
+                \Log::info('Agent ID=' . $this->reclamation->agent_id . ' existe: ' . ($agentExists ? 'Oui' : 'Non'));
+            }
+            
+            // Ne pas notifier l'auteur du commentaire
+            $commentAuthorId = $this->comment->id_ecrivain;
+            
+            // Si la réclamation existe et a un propriétaire différent de l'auteur du commentaire
+            if ($this->reclamation && 
+                $this->reclamation->id_citoyen && 
+                $this->reclamation->id_citoyen != $commentAuthorId) {
+                
+                // Vérifier si l'utilisateur existe avant de créer la notification
+                if (\App\Models\User::where('id', $this->reclamation->id_citoyen)->exists()) {
+                    $message = $this->user->nom . ' ' . ($this->user->prenom ?? '') . ' a commenté votre réclamation';
+                    
+                    \Log::info('Création de notification pour citoyen ID=' . $this->reclamation->id_citoyen);
+                    
+                    try {
+                        Notification::create([
+                            'id_utilisateur' => $this->reclamation->id_citoyen,
+                            'id_reclamation' => $this->reclamation->id,
+                            'message' => $message,
+                            'type' => 'comment',
+                            'etat' => false,
+                            'data' => [
+                                'commentaire' => $this->comment->commentaire,
+                                'user_name' => $this->user->nom . ' ' . ($this->user->prenom ?? ''),
+                                'reclamation_titre' => $this->reclamation->titre
+                            ]
+                        ]);
+                        
+                        \Log::info('Notification enregistrée pour le citoyen: ' . $this->reclamation->id_citoyen);
+                    } catch (\Exception $e) {
+                        \Log::error('Erreur lors de l\'enregistrement de la notification pour le citoyen: ' . $e->getMessage());
+                        \Log::error($e->getTraceAsString());
+                    }
+                } else {
+                    \Log::warning('Impossible de créer la notification: utilisateur citoyen ID=' . $this->reclamation->id_citoyen . ' introuvable');
+                }
+            } else {
+                \Log::info('Pas de notification pour le citoyen: il est l\'auteur du commentaire ou n\'est pas lié à cette réclamation');
+            }
+            
+            // Si la réclamation a un agent assigné différent de l'auteur du commentaire
+            if ($this->reclamation && 
+                $this->reclamation->agent_id && 
+                $this->reclamation->agent_id != $commentAuthorId) {
+                
+                // Vérifier si l'agent existe avant de créer la notification
+                if (\App\Models\User::where('id', $this->reclamation->agent_id)->exists()) {
+                    $message = $this->user->nom . ' ' . ($this->user->prenom ?? '') . ' a commenté une réclamation que vous traitez';
+                    
+                    \Log::info('Création de notification pour agent ID=' . $this->reclamation->agent_id);
+                    
+                    try {
+                        Notification::create([
+                            'id_utilisateur' => $this->reclamation->agent_id,
+                            'id_reclamation' => $this->reclamation->id,
+                            'message' => $message,
+                            'type' => 'comment',
+                            'etat' => false,
+                            'data' => [
+                                'commentaire' => $this->comment->commentaire,
+                                'user_name' => $this->user->nom . ' ' . ($this->user->prenom ?? ''),
+                                'reclamation_titre' => $this->reclamation->titre
+                            ]
+                        ]);
+                        
+                        \Log::info('Notification enregistrée pour l\'agent: ' . $this->reclamation->agent_id);
+                    } catch (\Exception $e) {
+                        \Log::error('Erreur lors de l\'enregistrement de la notification pour l\'agent: ' . $e->getMessage());
+                        \Log::error($e->getTraceAsString());
+                    }
+                } else {
+                    \Log::warning('Impossible de créer la notification: agent ID=' . $this->reclamation->agent_id . ' introuvable');
+                }
+            } else {
+                \Log::info('Pas de notification pour l\'agent: il est l\'auteur du commentaire ou n\'est pas lié à cette réclamation');
+            }
+        } catch (\Exception $e) {
+            \Log::error('Erreur générale lors de l\'enregistrement des notifications: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+        }
     }
 
     /**
@@ -42,19 +153,36 @@ class NewCommentEvent implements ShouldBroadcast
      */
     public function broadcastOn(): array
     {
-        // Vérifier si la reclamation existe et a un id_citoyen
-        if ($this->reclamation && $this->reclamation->id_citoyen) {
-            \Log::info('Broadcasting to channel: reclamation.'.$this->reclamation->id_citoyen);
-            return [
-                new PrivateChannel('reclamation.'.$this->reclamation->id_citoyen),
-            ];
+        $channels = [];
+        $commentAuthorId = $this->comment->id_ecrivain;
+        
+        // Vérifier si la reclamation existe et a un id_citoyen différent de l'auteur du commentaire
+        if ($this->reclamation && 
+            $this->reclamation->id_citoyen && 
+            $this->reclamation->id_citoyen != $commentAuthorId) {
+            \Log::info('Broadcasting to citoyen channel: reclamation.'.$this->reclamation->id_citoyen);
+            $channels[] = new PrivateChannel('reclamation.'.$this->reclamation->id_citoyen);
+        } else {
+            \Log::info('Not broadcasting to citoyen (auteur du commentaire ou pas concerné)');
         }
         
-        // Si la réclamation n'existe pas ou n'a pas d'id_citoyen, retourner un canal fictif
-        // Cela évitera l'erreur mais n'enverra pas de notification
-        return [
-            new PrivateChannel('null-channel'),
-        ];
+        // Vérifier si la réclamation a un agent assigné différent de l'auteur du commentaire
+        if ($this->reclamation && 
+            $this->reclamation->agent_id && 
+            $this->reclamation->agent_id != $commentAuthorId) {
+            \Log::info('Broadcasting to agent channel: agent-reclamation.'.$this->reclamation->agent_id);
+            $channels[] = new PrivateChannel('agent-reclamation.'.$this->reclamation->agent_id);
+        } else {
+            \Log::info('Not broadcasting to agent (auteur du commentaire ou pas concerné)');
+        }
+        
+        // Si aucun canal n'est disponible, utiliser un canal fictif
+        if (empty($channels)) {
+            \Log::info('No valid channels found, using null-channel');
+            return [new PrivateChannel('null-channel')];
+        }
+        
+        return $channels;
     }
 
     /**
