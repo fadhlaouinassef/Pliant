@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\CommentaireReclamation;
 use App\Models\Reclamation;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use App\Events\NewCommentEvent;
 
 class CommentaireReclamationController extends Controller
 {
@@ -43,13 +45,51 @@ class CommentaireReclamationController extends Controller
             'commentaire' => 'required|string|max:1000',
         ]);
 
-        CommentaireReclamation::create([
-            'id_reclamation' => $validated['id_reclamation'],
-            'id_ecrivain' => Auth::id(),
-            'commentaire' => $validated['commentaire'],
-        ]);
-
-        return redirect()->back()->with('success', 'Commentaire ajouté avec succès.');
+        try {
+            $comment = CommentaireReclamation::create([
+                'id_reclamation' => $validated['id_reclamation'],
+                'id_ecrivain' => Auth::id(),
+                'commentaire' => $validated['commentaire'],
+            ]);
+            
+            // Récupérer la réclamation associée avec le chargement explicite
+            $reclamation = Reclamation::find($validated['id_reclamation']);
+            
+            // Ne déclencher l'événement que si:
+            // 1. La réclamation existe
+            // 2. La réclamation a un propriétaire (id_citoyen)
+            // 3. Le commentaire n'est pas écrit par le propriétaire de la réclamation
+            if ($reclamation && 
+                $reclamation->id_citoyen && 
+                $reclamation->id_citoyen != Auth::id()) {
+                
+                // S'assurer que la relation est correctement chargée
+                $comment->reclamation = $reclamation;
+                
+                // Ajouter des logs pour le débogage
+                \Log::info('Sending notification for comment', [
+                    'comment_id' => $comment->id,
+                    'reclamation_id' => $reclamation->id,
+                    'recipient_id' => $reclamation->id_citoyen,
+                    'sender_id' => Auth::id()
+                ]);
+                
+                // Déclencher l'événement de notification
+                event(new NewCommentEvent($comment, Auth::user()));
+            } else {
+                \Log::info('No notification sent for comment', [
+                    'comment_id' => $comment->id,
+                    'reclamation_id' => $reclamation->id ?? 'null',
+                    'has_id_citoyen' => $reclamation ? (bool)$reclamation->id_citoyen : false,
+                    'is_self_comment' => $reclamation ? ($reclamation->id_citoyen == Auth::id()) : false
+                ]);
+            }
+            
+            return redirect()->back()->with('success', 'Commentaire ajouté avec succès.');
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de l\'ajout du commentaire: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Une erreur est survenue lors de l\'ajout du commentaire.');
+        }
     }
 
     public function destroy(CommentaireReclamation $comment)

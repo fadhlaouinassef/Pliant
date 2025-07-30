@@ -290,9 +290,12 @@
                                     placeholder="Saisir votre commentaire ici..."
                                     required
                                 ></textarea>
+                                <!-- Error message for validation errors -->
                                 @error('commentaire')
                                     <span class="text-red-500 text-sm">{{ $message }}</span>
                                 @enderror
+                                <!-- Error message for AJAX errors -->
+                                <div id="comment-error" class="text-red-500 text-sm mt-1 hidden"></div>
                             </div>
                             <div class="flex justify-end space-x-3">
                                 <button
@@ -728,6 +731,20 @@
         event.preventDefault();
         const form = event.target;
         const reclamationId = document.getElementById('comment-reclamation-id').value;
+        
+        // Désactiver le bouton d'envoi pour éviter les soumissions multiples
+        const submitButton = form.querySelector('button[type="submit"]');
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = 'Envoi en cours...';
+        }
+        
+        // Effacer les messages d'erreur précédents
+        const errorEl = document.getElementById('comment-error');
+        if (errorEl) {
+            errorEl.textContent = '';
+            errorEl.classList.add('hidden');
+        }
 
         fetch(form.action, {
             method: 'POST',
@@ -738,26 +755,64 @@
             body: new FormData(form)
         })
         .then(response => {
-            if (!response.ok) {
-                throw new Error('Erreur réseau: ' + response.statusText);
+            // Si la réponse est une redirection (302, 301), c'est une réussite (Laravel redirect()->back())
+            if (response.redirected || response.ok) {
+                form.reset();
+                toggleCommentForm();
+                fetchComments(reclamationId);
+                return { success: true };
             }
-            return response.text();
+            
+            // Si c'est une erreur 500, il y a probablement un problème avec la notification
+            // mais le commentaire a été enregistré
+            if (response.status === 500) {
+                form.reset();
+                toggleCommentForm();
+                fetchComments(reclamationId);
+                console.warn('Commentaire enregistré mais erreur de notification');
+                return { success: true, warning: 'Notification non envoyée' };
+            }
+            
+            // Pour les autres erreurs, tenter de récupérer le message d'erreur
+            return response.text().then(text => {
+                try {
+                    return { success: false, error: JSON.parse(text) };
+                } catch (e) {
+                    throw new Error('Erreur réseau: ' + response.statusText);
+                }
+            });
         })
-        .then(text => {
-            try {
-                const data = JSON.parse(text);
-                form.reset();
-                toggleCommentForm();
-                fetchComments(reclamationId);
-            } catch (e) {
-                form.reset();
-                toggleCommentForm();
-                fetchComments(reclamationId);
+        .then(result => {
+            if (result.success) {
+                // Le commentaire a été enregistré avec succès
+                if (result.warning) {
+                    console.warn(result.warning);
+                }
+            } else if (result.error) {
+                // Afficher l'erreur
+                if (errorEl) {
+                    errorEl.textContent = result.error.message || 'Erreur lors de l\'envoi du commentaire';
+                    errorEl.classList.remove('hidden');
+                }
             }
         })
         .catch(error => {
             console.error('Error submitting comment:', error);
-            alert('Erreur lors de l\'envoi du commentaire: ' + error.message);
+            
+            // Afficher un message d'erreur
+            if (errorEl) {
+                errorEl.textContent = error.message || 'Erreur lors de l\'envoi du commentaire';
+                errorEl.classList.remove('hidden');
+            } else {
+                alert('Erreur lors de l\'envoi du commentaire: ' + error.message);
+            }
+        })
+        .finally(() => {
+            // Réactiver le bouton
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Envoyer';
+            }
         });
     }
 

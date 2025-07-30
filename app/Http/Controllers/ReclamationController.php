@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\ReclamationStatusUpdated;
 use App\Http\Controllers\UtilisateurController;
+use Illuminate\Support\Facades\DB;
 
 class ReclamationController extends Controller
 {
@@ -24,6 +25,29 @@ class ReclamationController extends Controller
             ->get();
             
         return view('citoyen.dashboard', compact('reclamations'));
+    }
+
+    /**
+     * Display a listing of all reclamations for agents.
+     */
+    public function indexForAgent()
+    {
+        // Récupération de toutes les réclamations avec informations sur les citoyens et les agents
+        $reclamations = Reclamation::with(['agent', 'citoyen'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+            
+        // Formatage des données pour la vue
+        foreach ($reclamations as $reclamation) {
+            // Définir le nom du citoyen si disponible
+            if ($reclamation->citoyen) {
+                $reclamation->nom_citoyen = $reclamation->citoyen->nom . ' ' . ($reclamation->citoyen->prenom ?? '');
+            } else {
+                $reclamation->nom_citoyen = 'Utilisateur inconnu';
+            }
+        }
+            
+        return view('agent.reclamations', compact('reclamations'));
     }
 
     /**

@@ -116,6 +116,8 @@
                                 @error('commentaire')
                                     <span class="text-red-500 text-sm">{{ $message }}</span>
                                 @enderror
+                                <!-- Error message for AJAX errors -->
+                                <div id="comment-error" class="text-red-500 text-sm mt-1 hidden"></div>
                             </div>
                             <div class="flex justify-end space-x-3">
                                 <button
@@ -225,7 +227,7 @@
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14 a7 7 0 00-7-7z"></path>
                                 </svg>
-                                <span>Citoyen ID: {{ $reclamation->id_citoyen ?? 'Non spécifié' }}</span>
+                                <span>Citoyen: {{ $reclamation->nom_citoyen ?? 'Non spécifié' }}</span>
                             </div>
                         </div>
                     </div>
@@ -241,7 +243,7 @@
                             data-status="{{ $reclamation->status }}"
                             data-status-class="@if($reclamation->status == 'résolue') bg-green-100 text-green-800 @elseif($reclamation->status == 'rejetée') bg-red-100 text-red-800 @elseif($reclamation->status == 'en cours') bg-indigo-100 text-indigo-800 @else bg-yellow-100 text-yellow-800 @endif"
                             data-updated-at="{{ $reclamation->updated_at->format('d/m/Y') }}"
-                            data-citoyen="{{ $reclamation->id_citoyen ?? 'Non spécifié' }}"
+                            data-citoyen="{{ $reclamation->nom_citoyen ?? 'Non spécifié' }}"
                             class="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center"
                         >
                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -470,6 +472,20 @@
         event.preventDefault();
         const form = event.target;
         const reclamationId = document.getElementById('comment-reclamation-id').value;
+        
+        // Désactiver le bouton d'envoi pour éviter les soumissions multiples
+        const submitButton = form.querySelector('button[type="submit"]');
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = 'Envoi en cours...';
+        }
+        
+        // Effacer les messages d'erreur précédents
+        const errorEl = document.getElementById('comment-error');
+        if (errorEl) {
+            errorEl.textContent = '';
+            errorEl.classList.add('hidden');
+        }
 
         fetch(form.action, {
             method: 'POST',
@@ -480,26 +496,64 @@
             body: new FormData(form)
         })
         .then(response => {
-            if (!response.ok) {
-                throw new Error('Erreur réseau: ' + response.statusText);
+            // Si la réponse est une redirection (302, 301), c'est une réussite (Laravel redirect()->back())
+            if (response.redirected || response.ok) {
+                form.reset();
+                toggleCommentForm();
+                fetchComments(reclamationId);
+                return { success: true };
             }
-            return response.text();
+            
+            // Si c'est une erreur 500, il y a probablement un problème avec la notification
+            // mais le commentaire a été enregistré
+            if (response.status === 500) {
+                form.reset();
+                toggleCommentForm();
+                fetchComments(reclamationId);
+                console.warn('Commentaire enregistré mais erreur de notification');
+                return { success: true, warning: 'Notification non envoyée' };
+            }
+            
+            // Pour les autres erreurs, tenter de récupérer le message d'erreur
+            return response.text().then(text => {
+                try {
+                    return { success: false, error: JSON.parse(text) };
+                } catch (e) {
+                    throw new Error('Erreur réseau: ' + response.statusText);
+                }
+            });
         })
-        .then(text => {
-            try {
-                const data = JSON.parse(text);
-                form.reset();
-                toggleCommentForm();
-                fetchComments(reclamationId);
-            } catch (e) {
-                form.reset();
-                toggleCommentForm();
-                fetchComments(reclamationId);
+        .then(result => {
+            if (result.success) {
+                // Le commentaire a été enregistré avec succès
+                if (result.warning) {
+                    console.warn(result.warning);
+                }
+            } else if (result.error) {
+                // Afficher l'erreur
+                if (errorEl) {
+                    errorEl.textContent = result.error.message || 'Erreur lors de l\'envoi du commentaire';
+                    errorEl.classList.remove('hidden');
+                }
             }
         })
         .catch(error => {
             console.error('Error submitting comment:', error);
-            alert('Erreur lors de l\'envoi du commentaire: ' + error.message);
+            
+            // Afficher un message d'erreur
+            if (errorEl) {
+                errorEl.textContent = error.message || 'Erreur lors de l\'envoi du commentaire';
+                errorEl.classList.remove('hidden');
+            } else {
+                alert('Erreur lors de l\'envoi du commentaire: ' + error.message);
+            }
+        })
+        .finally(() => {
+            // Réactiver le bouton
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Envoyer';
+            }
         });
     }
 

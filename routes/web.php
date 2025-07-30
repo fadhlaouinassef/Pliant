@@ -10,8 +10,11 @@ use App\Http\Controllers\UtilisateurController;
 use App\Http\Controllers\ReclamationController;
 use App\Http\Controllers\CommentaireReclamationController;
 use App\Http\Controllers\InteractionController;
+use Illuminate\Support\Facades\Broadcast;
 
 
+// Manually register broadcasting routes (needed for Pusher authentication)
+Broadcast::routes(['middleware' => ['web', 'auth']]);
 
 Route::get('/', function () {
     return view('home');
@@ -47,7 +50,7 @@ Route::middleware(['auth'])->group(function () {
     })->middleware('verified')->name('dashboard');
 
     // Agent routes
-    Route::get('/agent/reclamations', [AgentController::class, 'reclamations'])->name('agent.reclamations');
+    Route::get('/agent/reclamations', [ReclamationController::class, 'indexForAgent'])->name('agent.reclamations');
 
 
     // Citoyen routes

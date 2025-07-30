@@ -345,9 +345,7 @@
                     </div>
                 </div>
             </form>
-            <div class="px-6 pb-4 text-xs text-gray-500 text-center">
-                <a href="https://fabform.io" target="_blank" class="hover:text-blue-600 transition">Powered by FabForm.io</a>
-            </div>
+            
         </div>
     </div>
 

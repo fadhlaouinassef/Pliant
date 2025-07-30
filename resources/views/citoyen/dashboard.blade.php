@@ -278,12 +278,56 @@
                     
                     <div class="flex items-center space-x-4">
                         <!-- Notification Icon -->
-                        <button class="p-1 text-gray-500 hover:text-gray-700 relative">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                            </svg>
-                            <span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-                        </button>
+                        <div class="relative" x-data="notifications">
+                            <button @click="notificationsOpen = !notificationsOpen" 
+                                    class="p-1 text-gray-500 hover:text-gray-700 relative">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                </svg>
+                                <span x-show="hasUnread" class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+                            </button>
+                            
+                            <!-- Notifications Dropdown -->
+                            <div x-show="notificationsOpen" 
+                                 @click.away="notificationsOpen = false"
+                                 class="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg py-1 z-30"
+                                 x-transition:enter="transition ease-out duration-100"
+                                 x-transition:enter-start="transform opacity-0 scale-95"
+                                 x-transition:enter-end="transform opacity-100 scale-100"
+                                 x-transition:leave="transition ease-in duration-75"
+                                 x-transition:leave-start="transform opacity-100 scale-100"
+                                 x-transition:leave-end="transform opacity-0 scale-95">
+                                
+                                <div class="px-4 py-2 text-center border-b border-gray-200">
+                                    <h3 class="text-lg font-semibold text-gray-700">Notifications</h3>
+                                </div>
+                                
+                                <div class="max-h-64 overflow-y-auto">
+                                    <template x-if="notifications.length === 0">
+                                        <div class="px-4 py-3 text-sm text-gray-500 text-center">
+                                            Aucune notification pour le moment
+                                        </div>
+                                    </template>
+                                    
+                                    <template x-for="notification in notifications" :key="notification.id">
+                                        <a href="#" 
+                                           class="block px-4 py-3 hover:bg-gray-50 border-b border-gray-100"
+                                           @click.prevent="navigateToReclamation(notification.reclamation_id)">
+                                            <div class="flex items-start">
+                                                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                                                    <span x-text="notification.user_name.charAt(0).toUpperCase()"></span>
+                                                </div>
+                                                <div class="ml-3 flex-1">
+                                                    <p class="text-sm font-medium text-gray-900" x-text="notification.user_name + ' a ajouté un commentaire'"></p>
+                                                    <p class="text-xs text-gray-500 mt-1">sur votre réclamation: <span class="font-semibold" x-text="notification.reclamation_titre"></span></p>
+                                                    <p class="text-xs text-gray-400 mt-1" x-text="notification.created_at"></p>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
                         
                         <!-- Profile Dropdown -->
                         <div class="relative" x-data="{ open: false }">
@@ -332,7 +376,8 @@
         </div>
     </div>
 
-    <!-- Scripts -->
+    <!-- Scripts Pusher -->
+    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <script>
         document.addEventListener('alpine:init', () => {
@@ -343,6 +388,120 @@
                     localStorage.setItem('sidebarOpen', this.open);
                 }
             });
+            
+            // Initialisation des notifications
+            Alpine.data('notifications', () => ({
+                notifications: [],
+                hasUnread: false,
+                notificationsOpen: false,
+                
+                init() {
+                    // Récupérer les notifications stockées localement (si elles existent)
+                    const storedNotifications = localStorage.getItem('notifications');
+                    if (storedNotifications) {
+                        this.notifications = JSON.parse(storedNotifications);
+                        this.hasUnread = this.notifications.some(n => !n.read);
+                    }
+                    
+                    // Initialiser Pusher avec debugging
+                    const pusher = new Pusher('3c83f1ff7345a4689785', {
+                        cluster: 'eu',
+                        encrypted: true,
+                        authEndpoint: '/broadcasting/auth',
+                        auth: {
+                            headers: {
+                                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            }
+                        }
+                    });
+                    
+                    // Enable Pusher debugging
+                    Pusher.logToConsole = true;
+                    
+                    // S'abonner au canal privé pour cet utilisateur
+                    try {
+                        // The channel name should be just 'reclamation.userId' without the 'private-' prefix
+                        // Laravel Echo/Pusher automatically adds the 'private-' prefix when needed
+                        const channelName = 'reclamation.{{ Auth::id() }}';
+                        console.log('Subscribing to channel:', channelName);
+                        
+                        const channel = pusher.subscribe('private-' + channelName);
+                        
+                        // Connection status debugging
+                        pusher.connection.bind('connected', () => {
+                            console.log('Connected to Pusher!');
+                            console.log('Connection state:', pusher.connection.state);
+                        });
+                        
+                        pusher.connection.bind('error', (err) => {
+                            console.error('Pusher connection error:', err);
+                        });
+                        
+                        // Écouter l'événement 'new.comment'
+                        channel.bind('new.comment', (data) => {
+                            console.log('Received new.comment event with data:', data);
+                            // Ajouter un ID unique à la notification
+                            data.id = Date.now();
+                            data.read = false;
+                            
+                            // Ajouter à la liste des notifications
+                            this.notifications.unshift(data);
+                            
+                            // Sauvegarder les notifications dans le localStorage
+                            localStorage.setItem('notifications', JSON.stringify(this.notifications.slice(0, 20)));
+                            
+                            // Mettre à jour l'indicateur de notifications non lues
+                            this.hasUnread = true;
+                            
+                            // Afficher une notification système si disponible
+                            this.showSystemNotification(data);
+                        });
+                        
+                        // Gestion des erreurs d'abonnement
+                        channel.bind('pusher:subscription_error', (status) => {
+                            console.error('Erreur d\'abonnement au canal', status);
+                        });
+                    } catch (error) {
+                        console.error('Erreur lors de l\'initialisation de Pusher:', error);
+                    }
+                },
+                
+                // Méthode pour naviguer vers la réclamation concernée
+                navigateToReclamation(reclamationId) {
+                    window.location.href = `/citoyen/reclamations?reclamation=${reclamationId}`;
+                    this.notificationsOpen = false;
+                    
+                    // Marquer la notification comme lue
+                    this.notifications.forEach(n => {
+                        if (n.reclamation_id === reclamationId) {
+                            n.read = true;
+                        }
+                    });
+                    
+                    // Vérifier s'il reste des notifications non lues
+                    this.hasUnread = this.notifications.some(n => !n.read);
+                    
+                    // Mettre à jour dans le localStorage
+                    localStorage.setItem('notifications', JSON.stringify(this.notifications));
+                },
+                
+                // Méthode pour afficher une notification système
+                showSystemNotification(data) {
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        const notification = new Notification('Nouveau commentaire', {
+                            body: `${data.user_name} a commenté sur votre réclamation "${data.reclamation_titre}"`,
+                            icon: '/favicon.ico'
+                        });
+                        
+                        notification.onclick = () => {
+                            window.focus();
+                            this.navigateToReclamation(data.reclamation_id);
+                        };
+                    } else if ('Notification' in window && Notification.permission !== 'denied') {
+                        Notification.requestPermission();
+                    }
+                }
+            }));
         });
 
         document.querySelectorAll('aside a').forEach(link => {
