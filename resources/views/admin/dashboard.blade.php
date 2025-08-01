@@ -213,7 +213,7 @@
                     </li>
                     <li class="mb-1">
                         <a href="{{ route('admin.utilisateurs.index') }}" 
-                        class="flex items-center px-4 py-3 hover:bg-indigo-700 transition-colors {{ request()->routeIs('admin.utilisateurs.index') ? 'active-menu' : '' }}">
+                        class="flex items-center px-4 py-3 hover:bg-indigo-700 transition-colors {{ request()->routeIs('admin.utilisateurs.*') ? 'active-menu' : '' }}">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                 <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
                             </svg>
@@ -334,7 +334,8 @@
             </header>
 
             <!-- Main Content -->
-            <main class="main-content mt-16 p-4 sm:p-6 bg-gray-50 text-gray-900"
+            <main class="main-content mt-16 p-4 sm:p-6 bg-gray-50 text-gray-900 overflow-x-hidden"
+                  id="content-wrapper"
                   :class="{'collapsed': !sidebarOpen && window.innerWidth > 768}">
                 @yield('content')
             </main>
@@ -343,6 +344,7 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="{{ asset('js/disable-auto-refresh.js') }}"></script>
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.store('sidebar', {
@@ -352,6 +354,7 @@
                     localStorage.setItem('sidebarOpen', this.open);
                 }
             });
+        });
         });
 
         document.querySelectorAll('aside a').forEach(link => {

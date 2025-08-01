@@ -148,6 +148,7 @@
         }
     </style>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <script src="{{ asset('js/disable-auto-refresh.js') }}"></script>
 </head>
 <body class="font-sans antialiased bg-gray-50">
     <div class="min-h-screen" x-data="{ sidebarOpen: window.innerWidth > 768, mobileSidebarOpen: false }">

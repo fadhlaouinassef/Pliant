@@ -11,8 +11,12 @@ class UtilisateurController extends Controller
 {
     public function index()
     {
-        $utilisateurs = User::paginate(10);
-        return view('admin.utilisateurs', compact('utilisateurs'));
+        try {
+            $utilisateurs = User::paginate(10);
+            return view('admin.utilisateurs', compact('utilisateurs'));
+        } catch (\Exception $e) {
+            return redirect()->route('admin.dashboard')->with('error', 'Erreur lors du chargement des utilisateurs: ' . $e->getMessage());
+        }
     }
 
     public function store(Request $request)
@@ -23,13 +27,15 @@ class UtilisateurController extends Controller
             'email' => 'required|email|unique:utilisateurs,email', // Table utilisateurs
             'num_tlph' => 'nullable|string|max:20',
             'adresse' => 'nullable|string|max:255',
-            'role' => 'required|in:utilisateur,admin',
+            'role' => 'required|in:citoyen,agent,admin',
             'mdp' => 'required|string|min:8',
             'image' => 'nullable|image|max:2048',
         ]);
 
         if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')->store('utilisateurs', 'public');
+            $imageName = time() . '.' . $request->file('image')->getClientOriginalExtension();
+            $request->file('image')->move(public_path('images'), $imageName);
+            $data['image'] = $imageName;
         }
 
         User::create($data); // Utilisation de User
@@ -45,15 +51,20 @@ class UtilisateurController extends Controller
             'email' => 'required|email|unique:utilisateurs,email,'.$utilisateur->id, // Table utilisateurs
             'num_tlph' => 'nullable|string|max:20',
             'adresse' => 'nullable|string|max:255',
-            'role' => 'required|in:utilisateur,admin',
+            'role' => 'required|in:citoyen,agent,admin',
             'image' => 'nullable|image|max:2048',
         ]);
 
         if ($request->hasFile('image')) {
-            if ($utilisateur->image) {
-                Storage::disk('public')->delete($utilisateur->image);
+            // Supprimer l'ancienne image si elle existe
+            if ($utilisateur->image && file_exists(public_path('images/' . $utilisateur->image))) {
+                unlink(public_path('images/' . $utilisateur->image));
             }
-            $data['image'] = $request->file('image')->store('utilisateurs', 'public');
+            
+            // Enregistrer la nouvelle image
+            $imageName = time() . '.' . $request->file('image')->getClientOriginalExtension();
+            $request->file('image')->move(public_path('images'), $imageName);
+            $data['image'] = $imageName;
         }
 
         $utilisateur->update($data);
@@ -63,11 +74,17 @@ class UtilisateurController extends Controller
 
     public function destroy(User $utilisateur)
     {
-        if ($utilisateur->image) {
-            Storage::disk('public')->delete($utilisateur->image);
+        try {
+            // Supprimer l'image de profil si elle existe
+            if ($utilisateur->image && file_exists(public_path('images/' . $utilisateur->image))) {
+                unlink(public_path('images/' . $utilisateur->image));
+            }
+            
+            $utilisateur->delete();
+            return redirect()->route('admin.utilisateurs.index')->with('success', 'Utilisateur supprimé avec succès');
+        } catch (\Exception $e) {
+            return redirect()->route('admin.utilisateurs.index')->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
         }
-        $utilisateur->delete();
-        return redirect()->route('admin.utilisateurs.index')->with('success', 'Utilisateur supprimé avec succès');
     }
 
     public function agents()

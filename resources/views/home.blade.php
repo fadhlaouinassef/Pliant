@@ -3,8 +3,56 @@
 @section('title', 'Pliant - Gestion de Réclamations')
 
 @section('content')
-    <!-- Adding Three.js and Font Awesome via CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Adding Alpine.js, Three.js and Font Awesome via CDN -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/    <!-- Fee                </form>
+            </div>
+        </div>
+        
+        <!-- Toast Notification -->
+        <div x-show="showToast" 
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 transform translate-y-2"
+            x-transition:enter-end="opacity-100 transform translate-y-0"
+            x-transition:leave="transition ease-in duration-100"
+            x-transition:leave-start="opacity-100 transform translate-y-0"
+            x-transition:leave-end="opacity-0 transform translate-y-2"
+            @click="showToast = false"
+            class="fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50" 
+            :class="toastType === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'"
+            x-cloak>
+            <div class="flex items-center space-x-2">
+                <template x-if="toastType === 'success'">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </template>
+                <template x-if="toastType === 'error'">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </template>
+                <span x-text="toastMessage"></span>
+            </div>
+        </div>
+    </div>k Button -->
+    <div x-data="feedbackForm()" class="relative">
+        <button id="open-feedback-btn">
+            <i class="fas fa-comment-alt"></i>
+            <span>Feedback</span>
+        </button>
+
+        <!-- Feedback Dialog -->
+        <div id="feedback-form" class="fixed bottom-16 right-16 z-50">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                <div class="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-5 flex justify-between items-center">
+                    <h3 class="text-xl font-kollektif">Votre Avis Compte</h3>
+                    <button id="close-feedback-btn" class="close-btn text-white hover:text-red-400" @click="closeForm()">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>ee.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
     <!-- Custom Styles for Feedback Button and Dialog -->
@@ -93,6 +141,28 @@
         #feedback-form .form-field:focus {
             border-color: #3b82f6;
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        /* Style pour les toasts */
+        .toast {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+            transform: translateY(1rem);
+            transition: all 0.3s ease-out;
+        }
+        
+        /* Alpine.js x-cloak directive */
+        [x-cloak] {
+            display: none !important;
         }
     </style>
 
@@ -295,37 +365,42 @@
                     </svg>
                 </button>
             </div>
-            <form action="{{ route('avis.store') }}" method="post" class="p-6 space-y-5" id="avis-form">
-                @csrf
-                <div>
-                    <label for="user-name" class="block text-sm font-medium text-gray-700 mb-1">Nom Utilisateur</label>
-                    <input type="text" id="user-name" name="nom_utilisateur" required 
-                           class="form-field w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
-                </div>
-                <div>
-                    <label for="user-comment" class="block text-sm font-medium text-gray-700 mb-1">Commentaire</label>
-                    <textarea id="user-comment" name="commentaire" rows="4" required
-                              class="form-field w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition resize-none"></textarea>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Note</label>
-                    <div class="flex space-x-2">
-                        <i class="fas fa-star text-xl text-gray-300 cursor-pointer hover:text-yellow-400 transition" data-rating="1"></i>
-                        <i class="fas fa-star text-xl text-gray-300 cursor-pointer hover:text-yellow-400 transition" data-rating="2"></i>
-                        <i class="fas fa-star text-xl text-gray-300 cursor-pointer hover:text-yellow-400 transition" data-rating="3"></i>
-                        <i class="fas fa-star text-xl text-gray-300 cursor-pointer hover:text-yellow-400 transition" data-rating="4"></i>
-                        <i class="fas fa-star text-xl text-gray-300 cursor-pointer hover:text-yellow-400 transition" data-rating="5"></i>
+                <form action="{{ route('avis.store') }}" method="post" class="p-6 space-y-5" id="avis-form" @submit.prevent="submitForm">
+                    @csrf
+                    <div>
+                        <label for="user-name" class="block text-sm font-medium text-gray-700 mb-1">Nom Utilisateur</label>
+                        <input type="text" id="user-name" name="nom_utilisateur" required 
+                               class="form-field w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
                     </div>
-                    <input type="hidden" id="user-rating" name="note" value="0">
-                </div>
-                <div class="flex justify-end space-x-3">
-                    <button type="button" id="cancel-feedback-btn" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition font-medium">Annuler</button>
-                    <button type="submit" id="submit-avis-btn" class="submit-btn bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition font-medium flex items-center">
-                        <span>Envoyer</span>
-                    </button>
-                </div>
-                
-                <!-- État du formulaire -->
+                    <div>
+                        <label for="user-comment" class="block text-sm font-medium text-gray-700 mb-1">Commentaire</label>
+                        <textarea id="user-comment" name="commentaire" rows="4" required
+                                  class="form-field w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition resize-none"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Note</label>
+                        <div class="flex space-x-2">
+                            <template x-for="i in 5" :key="i">
+                                <i class="fas fa-star text-xl cursor-pointer transition"
+                                   :class="rating >= i ? 'text-yellow-400' : 'text-gray-300'"
+                                   @click="setRating(i)"></i>
+                            </template>
+                        </div>
+                        <input type="hidden" id="user-rating" name="note" x-model="rating">
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" id="cancel-feedback-btn" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition font-medium" @click="closeForm()">Annuler</button>
+                        <button type="submit" id="submit-avis-btn" class="submit-btn bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition font-medium flex items-center" :disabled="isSubmitting">
+                            <span x-text="isSubmitting ? 'Envoi en cours...' : 'Envoyer'"></span>
+                            <span x-show="isSubmitting" class="ml-2">
+                                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </span>
+                        </button>
+                    </div>
+                </form>                <!-- État du formulaire -->
                 <div id="form-status" class="hidden mt-4">
                     <!-- Loader -->
                     <div id="avis-loader" class="flex items-center justify-center">

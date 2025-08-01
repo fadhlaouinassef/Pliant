@@ -39,9 +39,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/dashboard1', function () {
         return view('admin.dashboard1');
     })->name('admin.dashboard1');
-    Route::get('/admin/utilisateurs', function () {
-        return view('admin.utilisateurs');
-    })->name('admin.utilisateurs');
+    // Route supprimée car elle est remplacée par la route ressource ci-dessous
+    // Route::get('/admin/utilisateurs', function () {
+    //     return view('admin.utilisateurs');
+    // })->name('admin.utilisateurs');
     Route::get('/admin/agents', [UtilisateurController::class, 'agents'])->name('admin.agents');
     Route::get('/agent/coéquipiers', [AgentController::class, 'coéquipiers'])->name('agent.coéquipiers');
     
