@@ -58,6 +58,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Agent routes
     Route::get('/agent/reclamations', [ReclamationController::class, 'indexForAgent'])->name('agent.reclamations');
+    Route::post('/agent/reclamations/export-pdf', [ReclamationController::class, 'exportPDF'])->name('agent.reclamations.export-pdf');
 
 
     // Citoyen routes

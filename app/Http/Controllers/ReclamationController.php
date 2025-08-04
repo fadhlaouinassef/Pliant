@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Mail;
 use App\Mail\ReclamationStatusUpdated;
 use App\Http\Controllers\UtilisateurController;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ReclamationController extends Controller
 {
@@ -257,5 +258,71 @@ class ReclamationController extends Controller
         $reclamation->delete();
 
         return redirect()->back()->with('success', 'Réclamation supprimée avec succès.');
+    }
+
+    /**
+     * Export réclamations to PDF
+     */
+    public function exportPDF(Request $request)
+    {
+        try {
+            $reclamationsData = $request->input('reclamations', []);
+            $filter = $request->input('filter', 'all');
+            
+            // If no data provided, get all reclamations for agent
+            if (empty($reclamationsData)) {
+                $query = Reclamation::with(['agent', 'citoyen'])->orderBy('created_at', 'desc');
+                
+                if ($filter !== 'all') {
+                    $query->where('status', $filter);
+                }
+                
+                $reclamations = $query->get();
+                
+                $reclamationsData = $reclamations->map(function ($reclamation) {
+                    return [
+                        'id' => $reclamation->id,
+                        'titre' => $reclamation->titre,
+                        'description' => $reclamation->description,
+                        'status' => $reclamation->status,
+                        'priorite' => $reclamation->priorite,
+                        'date' => $reclamation->created_at->format('d/m/Y'),
+                        'citoyen' => $reclamation->citoyen ? 
+                            $reclamation->citoyen->nom . ' ' . ($reclamation->citoyen->prenom ?? '') : 
+                            'Non spécifié'
+                    ];
+                })->toArray();
+            }
+
+            // Prepare data for PDF
+            $data = [
+                'reclamations' => $reclamationsData,
+                'filter' => $filter,
+                'filterText' => $filter === 'all' ? 'Toutes' : ucfirst($filter),
+                'currentDate' => now()->format('d/m/Y H:i'),
+                'totalCount' => count($reclamationsData),
+                'stats' => [
+                    'en_attente' => collect($reclamationsData)->where('status', 'en attente')->count(),
+                    'en_cours' => collect($reclamationsData)->where('status', 'en cours')->count(),
+                    'resolues' => collect($reclamationsData)->where('status', 'résolue')->count(),
+                    'rejetees' => collect($reclamationsData)->where('status', 'rejetée')->count(),
+                ]
+            ];
+
+            // Generate PDF
+            $pdf = Pdf::loadView('pdf.reclamations', $data);
+            $pdf->setPaper('A4', 'portrait');
+            
+            // Return PDF as download
+            $filename = 'reclamations_' . $filter . '_' . now()->format('Y-m-d_H-i') . '.pdf';
+            return $pdf->download($filename);
+            
+        } catch (\Exception $e) {
+            \Log::error('PDF Export Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la génération du PDF: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

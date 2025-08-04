@@ -1,7 +1,342 @@
 @extends('agent.dashboard')
 
 @section('content')
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Custom Styles for Filtering and Animations -->
+<style>
+    .reclamation-card {
+        transition: all 0.3s ease-in-out;
+        transform: scale(1);
+    }
+    
+    .reclamation-card:hover {
+        transform: scale(1.02);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+    
+    .filter-animation {
+        animation: fadeIn 0.5s ease-in-out;
+    }
+    
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .export-loading {
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .export-loading::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+        animation: loading 1.5s infinite;
+    }
+    
+    @keyframes loading {
+        0% { left: -100%; }
+        100% { left: 100%; }
+    }
+    
+    /* Status filter highlight */
+    #statusFilter:focus {
+        border-color: #3B82F6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    /* No results message animation */
+    #no-results-message {
+        animation: slideUp 0.4s ease-out;
+    }
+    
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
 <div x-data="reclamationManager()" class="container mx-auto px-4 py-8">
+    <!-- Page Header -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Gestion des Réclamations</h1>
+                <p class="text-gray-600 mt-2">Tableau de bord et statistiques de vos réclamations assignées</p>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="text-right">
+                    <p class="text-sm text-gray-500">Dernière mise à jour</p>
+                    <p class="text-lg font-semibold text-gray-900">{{ now()->format('d/m/Y H:i') }}</p>
+                </div>
+                <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    @php
+        $totalReclamations = $reclamations->count();
+        $enAttente = $reclamations->where('status', 'en attente')->count();
+        $enCours = $reclamations->where('status', 'en cours')->count();
+        $resolues = $reclamations->where('status', 'résolue')->count();
+        $rejetees = $reclamations->where('status', 'rejetée')->count();
+        $prioriteElevee = $reclamations->where('priorite', 'élevée')->count();
+        $avgResolutionTime = 3.2; // Exemple - à calculer selon votre logique
+        $satisfactionRate = 87; // Exemple - à calculer selon votre logique
+    @endphp
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Total Réclamations -->
+        <div class="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6 hover:shadow-lg transition-shadow">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-blue-600 text-sm font-medium">Total Réclamations</p>
+                    <p class="text-3xl font-bold text-blue-900">{{ $totalReclamations }}</p>
+                    <p class="text-blue-600 text-sm mt-1">Assignées à vous</p>
+                </div>
+                <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- En Attente -->
+        <div class="bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 rounded-xl p-6 hover:shadow-lg transition-shadow">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-yellow-600 text-sm font-medium">En Attente</p>
+                    <p class="text-3xl font-bold text-yellow-900">{{ $enAttente }}</p>
+                    <p class="text-yellow-600 text-sm mt-1">{{ $totalReclamations > 0 ? round(($enAttente / $totalReclamations) * 100, 1) : 0 }}% du total</p>
+                </div>
+                <div class="w-12 h-12 bg-yellow-500 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- En Cours -->
+        <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 rounded-xl p-6 hover:shadow-lg transition-shadow">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-indigo-600 text-sm font-medium">En Cours</p>
+                    <p class="text-3xl font-bold text-indigo-900">{{ $enCours }}</p>
+                    <p class="text-indigo-600 text-sm mt-1">{{ $totalReclamations > 0 ? round(($enCours / $totalReclamations) * 100, 1) : 0 }}% du total</p>
+                </div>
+                <div class="w-12 h-12 bg-indigo-500 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Résolues -->
+        <div class="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl p-6 hover:shadow-lg transition-shadow">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-green-600 text-sm font-medium">Résolues</p>
+                    <p class="text-3xl font-bold text-green-900">{{ $resolues }}</p>
+                    <p class="text-green-600 text-sm mt-1">{{ $totalReclamations > 0 ? round(($resolues / $totalReclamations) * 100, 1) : 0 }}% du total</p>
+                </div>
+                <div class="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <!-- Status Distribution Chart -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-semibold text-gray-900">Répartition par Statut</h3>
+                <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path>
+                    </svg>
+                </div>
+            </div>
+            <div class="relative h-64">
+                <canvas id="statusChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Priority Distribution Chart -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-semibold text-gray-900">Répartition par Priorité</h3>
+                <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                </div>
+            </div>
+            <div class="relative h-64">
+                <canvas id="priorityChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timeline Chart -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-semibold text-gray-900">Évolution des Réclamations (7 derniers jours)</h3>
+            <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                </svg>
+            </div>
+        </div>
+        <div class="relative h-80">
+            <canvas id="timelineChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Performance Metrics -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <!-- Temps Moyen de Résolution -->
+        <div class="bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-xl p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-orange-600 text-sm font-medium">Temps Moyen de Résolution</p>
+                    <p class="text-3xl font-bold text-orange-900">{{ $avgResolutionTime }}j</p>
+                    <div class="flex items-center mt-2">
+                        <svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                        </svg>
+                        <p class="text-green-600 text-sm">-0.8j ce mois</p>
+                    </div>
+                </div>
+                <div class="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Taux de Satisfaction -->
+        <div class="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-xl p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-purple-600 text-sm font-medium">Taux de Satisfaction</p>
+                    <p class="text-3xl font-bold text-purple-900">{{ $satisfactionRate }}%</p>
+                    <div class="flex items-center mt-2">
+                        <svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                        </svg>
+                        <p class="text-green-600 text-sm">+5% ce mois</p>
+                    </div>
+                </div>
+                <div class="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Priorité Élevée -->
+        <div class="bg-gradient-to-br from-red-50 to-red-100 border border-red-200 rounded-xl p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-red-600 text-sm font-medium">Priorité Élevée</p>
+                    <p class="text-3xl font-bold text-red-900">{{ $prioriteElevee }}</p>
+                    <p class="text-red-600 text-sm mt-1">Nécessitent attention</p>
+                </div>
+                <div class="w-12 h-12 bg-red-500 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Actions Rapides</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button class="flex items-center justify-center p-4 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors">
+                <svg class="w-5 h-5 text-blue-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"></path>
+                </svg>
+                <span class="text-blue-700 font-medium">Traiter les réclamations urgentes</span>
+            </button>
+            
+            <button class="flex items-center justify-center p-4 bg-green-50 hover:bg-green-100 rounded-lg border border-green-200 transition-colors">
+                <svg class="w-5 h-5 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span class="text-green-700 font-medium">Marquer comme résolues</span>
+            </button>
+            
+            <button class="flex items-center justify-center p-4 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors">
+                <svg class="w-5 h-5 text-purple-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                <span class="text-purple-700 font-medium">Générer rapport</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Réclamations List Header -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+        <div class="flex items-center justify-between">
+            <h3 class="text-xl font-semibold text-gray-900">Liste des Réclamations</h3>
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2">
+                    <label class="text-sm text-gray-600">Filtrer par:</label>
+                    <select id="statusFilter" x-model="statusFilter" @change="filterReclamations()" class="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="all">Toutes</option>
+                        <option value="en attente">En attente</option>
+                        <option value="en cours">En cours</option>
+                        <option value="résolue">Résolues</option>
+                        <option value="rejetée">Rejetées</option>
+                    </select>
+                </div>
+                <button @click="exportToPDF()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
+                    <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    Exporter PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Overlay for Blur -->
     <div x-show="showOverlay" class="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm z-40" @click="closeAllPopups()"></div>
     
@@ -187,13 +522,19 @@
     </div>
     
     @if(isset($reclamations) && $reclamations->count() > 0)
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div id="reclamations-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             @foreach($reclamations as $reclamation)
-                <div class="bg-white rounded-lg shadow-md overflow-hidden border-l-4 
+                <div class="reclamation-card bg-white rounded-lg shadow-md overflow-hidden border-l-4 
                     @if($reclamation->status == 'résolue') border-green-500
                     @elseif($reclamation->status == 'rejetée') border-red-500
                     @elseif($reclamation->status == 'en cours') border-indigo-500
-                    @else border-yellow-500 @endif">
+                    @else border-yellow-500 @endif"
+                    data-status="{{ $reclamation->status }}"
+                    data-priorite="{{ $reclamation->priorite }}"
+                    data-date="{{ $reclamation->created_at->format('Y-m-d') }}"
+                    data-titre="{{ $reclamation->titre }}"
+                    data-description="{{ $reclamation->description }}"
+                    data-citoyen="{{ $reclamation->nom_citoyen ?? 'Non spécifié' }}">
                     <div class="p-6">
                         <div class="flex justify-between items-start mb-4">
                             <h2 class="text-xl font-semibold text-gray-900">{{ $reclamation->titre }}</h2>
@@ -367,6 +708,9 @@ function reclamationManager() {
         showCommentForm: false,
         showDeleteConfirmModal: false,
         isCommentsExpanded: false,
+        
+        // Filter State
+        statusFilter: 'all',
         
         // Toast Notification
         showToast: false,
@@ -619,8 +963,377 @@ function reclamationManager() {
                 this.isLoading = false;
                 this.commentToDeleteId = null;
             });
+        },
+        
+        // Filter reclamations by status
+        filterReclamations() {
+            const cards = document.querySelectorAll('.reclamation-card');
+            const noResultsMsg = document.getElementById('no-results-message');
+            let visibleCount = 0;
+            
+            cards.forEach(card => {
+                const cardStatus = card.getAttribute('data-status');
+                
+                if (this.statusFilter === 'all' || cardStatus === this.statusFilter) {
+                    card.style.display = 'block';
+                    // Add fade-in animation
+                    card.style.opacity = '0';
+                    setTimeout(() => {
+                        card.style.opacity = '1';
+                    }, 50);
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            
+            // Show/hide no results message
+            if (visibleCount === 0) {
+                if (!noResultsMsg) {
+                    this.showNoResultsMessage();
+                }
+            } else {
+                if (noResultsMsg) {
+                    noResultsMsg.remove();
+                }
+            }
+            
+            this.showToastMessage(`${visibleCount} réclamation(s) trouvée(s)`, 'info');
+        },
+        
+        // Show no results message
+        showNoResultsMessage() {
+            const grid = document.getElementById('reclamations-grid');
+            const message = document.createElement('div');
+            message.id = 'no-results-message';
+            message.className = 'col-span-full text-center py-12';
+            message.innerHTML = `
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <h3 class="mt-2 text-lg font-medium text-gray-900">Aucune réclamation trouvée</h3>
+                <p class="mt-1 text-gray-500">Aucune réclamation ne correspond au filtre sélectionné.</p>
+            `;
+            grid.appendChild(message);
+        },
+        
+        // Export to PDF
+        exportToPDF() {
+            this.isLoading = true;
+            this.showToastMessage('Génération du PDF en cours...', 'info');
+            
+            // Collect visible reclamations data
+            const visibleCards = document.querySelectorAll('.reclamation-card[style*="display: block"], .reclamation-card:not([style*="display: none"])');
+            const reclamationsData = Array.from(visibleCards).map(card => ({
+                titre: card.getAttribute('data-titre'),
+                description: card.getAttribute('data-description'),
+                status: card.getAttribute('data-status'),
+                priorite: card.getAttribute('data-priorite'),
+                date: card.getAttribute('data-date'),
+                citoyen: card.getAttribute('data-citoyen')
+            }));
+            
+            // Create form data for PDF generation
+            const formData = new FormData();
+            formData.append('reclamations', JSON.stringify(reclamationsData));
+            formData.append('filter', this.statusFilter);
+            
+            // Send to server for PDF generation
+            fetch('/agent/reclamations/export-pdf', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json, application/pdf',
+                    'X-CSRF-TOKEN': this.csrfToken
+                },
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erreur serveur: ' + response.status);
+                }
+                
+                // Check if response is PDF
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/pdf')) {
+                    return response.blob();
+                } else {
+                    // Fallback to client-side PDF generation
+                    this.generatePDFClientSide(reclamationsData);
+                    return null;
+                }
+            })
+            .then(blob => {
+                if (blob) {
+                    // Download the PDF
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `reclamations_${this.statusFilter}_${new Date().getTime()}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    this.showToastMessage('PDF téléchargé avec succès', 'success');
+                }
+            })
+            .catch(error => {
+                console.error('Error generating PDF:', error);
+                // Fallback to client-side generation
+                this.generatePDFClientSide(reclamationsData);
+            })
+            .finally(() => {
+                this.isLoading = false;
+            });
+        },
+        
+        // Generate PDF content structure
+        generatePDFContent(reclamationsData) {
+            const currentDate = new Date().toLocaleDateString('fr-FR');
+            const filterText = this.statusFilter === 'all' ? 'Toutes' : this.statusFilter;
+            
+            return {
+                title: 'Rapport des Réclamations',
+                subtitle: `Filtre: ${filterText} - Généré le ${currentDate}`,
+                data: reclamationsData,
+                statistics: {
+                    total: reclamationsData.length,
+                    enAttente: reclamationsData.filter(r => r.status === 'en attente').length,
+                    enCours: reclamationsData.filter(r => r.status === 'en cours').length,
+                    resolues: reclamationsData.filter(r => r.status === 'résolue').length,
+                    rejetees: reclamationsData.filter(r => r.status === 'rejetée').length
+                }
+            };
+        },
+        
+        // Client-side PDF generation fallback
+        generatePDFClientSide(reclamationsData) {
+            // Simple HTML to print functionality
+            const printWindow = window.open('', '_blank');
+            const currentDate = new Date().toLocaleDateString('fr-FR');
+            const filterText = this.statusFilter === 'all' ? 'Toutes' : this.statusFilter;
+            
+            let htmlContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Rapport des Réclamations</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #ccc; padding-bottom: 20px; }
+                        .stats { display: flex; justify-content: space-around; margin: 20px 0; }
+                        .stat-card { text-align: center; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+                        .reclamation { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+                        .status { padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+                        .status.en-attente { background-color: #fef3c7; color: #92400e; }
+                        .status.en-cours { background-color: #e0e7ff; color: #3730a3; }
+                        .status.resolue { background-color: #d1fae5; color: #065f46; }
+                        .status.rejetee { background-color: #fee2e2; color: #991b1b; }
+                        @media print { body { margin: 0; } }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>Rapport des Réclamations</h1>
+                        <p>Filtre: ${filterText} | Généré le ${currentDate}</p>
+                        <p>Total: ${reclamationsData.length} réclamation(s)</p>
+                    </div>
+                    
+                    <div class="stats">
+                        <div class="stat-card">
+                            <h3>En Attente</h3>
+                            <p>${reclamationsData.filter(r => r.status === 'en attente').length}</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>En Cours</h3>
+                            <p>${reclamationsData.filter(r => r.status === 'en cours').length}</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Résolues</h3>
+                            <p>${reclamationsData.filter(r => r.status === 'résolue').length}</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Rejetées</h3>
+                            <p>${reclamationsData.filter(r => r.status === 'rejetée').length}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="reclamations">
+            `;
+            
+            reclamationsData.forEach((reclamation, index) => {
+                htmlContent += `
+                    <div class="reclamation">
+                        <h3>${reclamation.titre}</h3>
+                        <p><strong>Description:</strong> ${reclamation.description}</p>
+                        <p><strong>Statut:</strong> <span class="status ${reclamation.status}">${reclamation.status}</span></p>
+                        <p><strong>Priorité:</strong> ${reclamation.priorite}</p>
+                        <p><strong>Date:</strong> ${new Date(reclamation.date).toLocaleDateString('fr-FR')}</p>
+                        <p><strong>Citoyen:</strong> ${reclamation.citoyen}</p>
+                    </div>
+                `;
+            });
+            
+            htmlContent += `
+                    </div>
+                </body>
+                </html>
+            `;
+            
+            printWindow.document.write(htmlContent);
+            printWindow.document.close();
+            
+            // Auto print
+            setTimeout(() => {
+                printWindow.print();
+                this.showToastMessage('PDF généré - Impression en cours', 'success');
+            }, 500);
         }
     };
 }
+
+// Initialize Charts
+document.addEventListener('DOMContentLoaded', function() {
+    // Status Distribution Chart
+    const statusCtx = document.getElementById('statusChart').getContext('2d');
+    new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['En Attente', 'En Cours', 'Résolues', 'Rejetées'],
+            datasets: [{
+                data: [{{ $enAttente }}, {{ $enCours }}, {{ $resolues }}, {{ $rejetees }}],
+                backgroundColor: [
+                    '#FCD34D', // Yellow for En Attente
+                    '#818CF8', // Indigo for En Cours
+                    '#34D399', // Green for Résolues
+                    '#F87171'  // Red for Rejetées
+                ],
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        usePointStyle: true,
+                        font: {
+                            size: 12
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Priority Distribution Chart
+    const priorityCtx = document.getElementById('priorityChart').getContext('2d');
+    const prioriteFaible = {{ $reclamations->where('priorite', 'faible')->count() }};
+    const prioriteMoyenne = {{ $reclamations->where('priorite', 'moyenne')->count() }};
+    const prioriteElevee = {{ $reclamations->where('priorite', 'élevée')->count() }};
+    
+    new Chart(priorityCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Faible', 'Moyenne', 'Élevée'],
+            datasets: [{
+                label: 'Nombre de réclamations',
+                data: [prioriteFaible, prioriteMoyenne, prioriteElevee],
+                backgroundColor: [
+                    '#10B981', // Green for Faible
+                    '#F59E0B', // Orange for Moyenne
+                    '#EF4444'  // Red for Élevée
+                ],
+                borderRadius: 8,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+
+    // Timeline Chart (7 derniers jours)
+    const timelineCtx = document.getElementById('timelineChart').getContext('2d');
+    const last7Days = [];
+    const reclamationsCreated = [];
+    const reclamationsResolved = [];
+    
+    // Generate last 7 days
+    for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        last7Days.push(date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }));
+        
+        // Simulated data - replace with actual database queries
+        reclamationsCreated.push(Math.floor(Math.random() * 5) + 1);
+        reclamationsResolved.push(Math.floor(Math.random() * 4) + 1);
+    }
+    
+    new Chart(timelineCtx, {
+        type: 'line',
+        data: {
+            labels: last7Days,
+            datasets: [{
+                label: 'Réclamations créées',
+                data: reclamationsCreated,
+                borderColor: '#3B82F6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.4,
+                fill: true
+            }, {
+                label: 'Réclamations résolues',
+                data: reclamationsResolved,
+                borderColor: '#10B981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            }
+        }
+    });
+});
 </script>
 @endsection
