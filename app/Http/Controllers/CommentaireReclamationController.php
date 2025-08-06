@@ -27,6 +27,7 @@ class CommentaireReclamationController extends Controller
                         'commentaire' => $comment->commentaire,
                         'created_at' => $comment->created_at->format('d/m/Y H:i'),
                         'id_ecrivain' => $comment->id_ecrivain,
+                        'nom_ecrivain' => $comment->ecrivain ? $comment->ecrivain->nom . ' ' . $comment->ecrivain->prenom : 'Utilisateur inconnu',
                         'can_delete' => $comment->id_ecrivain == Auth::id()
                     ];
                 });

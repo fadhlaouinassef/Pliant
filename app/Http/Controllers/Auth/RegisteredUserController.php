@@ -36,7 +36,7 @@ class RegisteredUserController extends Controller
             'adresse' => ['required', 'string', 'max:255'],
             'password' => ['required', 'confirmed', 'min:8'],
             'image' => ['nullable', 'image', 'max:2048'],
-            'role' => ['required', 'in:user,agent,admin'],
+            'role' => ['required', 'in:citoyen,agent,admin'],
         ]);
 
         $imageName = null;
@@ -61,6 +61,16 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return redirect()->route('dashboard'); // Adjust as needed
+        // Redirect based on user role
+        switch ($user->role) {
+            case 'admin':
+                return redirect()->route('admin.dashboard');
+            case 'agent':
+                return redirect()->route('agent.dashboard');
+            case 'citoyen':
+                return redirect()->route('citoyen.dashboard');
+            default:
+                return redirect()->route('dashboard');
+        }
     }
 }

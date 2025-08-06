@@ -428,7 +428,7 @@
                         <template x-for="comment in displayComments" :key="comment.id">
                             <div class="border-b border-gray-200 pb-3 mb-3">
                                 <div class="flex justify-between items-start mb-1">
-                                    <span class="font-medium text-gray-900" x-text="comment.id_ecrivain"></span>
+                                    <span class="font-medium text-gray-900" x-text="comment.nom_ecrivain || comment.id_ecrivain"></span>
                                     <span class="text-xs text-gray-500" x-text="comment.created_at"></span>
                                 </div>
                                 <p class="text-gray-700 mb-2" x-text="comment.commentaire"></p>
@@ -1203,10 +1203,10 @@ document.addEventListener('DOMContentLoaded', function() {
             datasets: [{
                 data: [{{ $enAttente }}, {{ $enCours }}, {{ $resolues }}, {{ $rejetees }}],
                 backgroundColor: [
-                    '#FCD34D', // Yellow for En Attente
-                    '#818CF8', // Indigo for En Cours
-                    '#34D399', // Green for Résolues
-                    '#F87171'  // Red for Rejetées
+                    '#FCD34D', // Jaune pour En Attente
+                    '#818CF8', // Mauve pour En Cours
+                    '#34D399', // vert pour Résolues
+                    '#F87171'  // Rouge pour Rejetées
                 ],
                 borderWidth: 0,
                 hoverOffset: 4

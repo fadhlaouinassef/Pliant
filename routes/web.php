@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CitoyenController;
 use App\Http\Controllers\AgentController;
@@ -23,12 +22,6 @@ Route::get('/', function () {
 
 // Route publique pour les avis
 Route::post('/avis', [App\Http\Controllers\AvisController::class, 'store'])->name('avis.store');
-
-// Authentication routes
-Route::get('/auth', [AuthController::class, 'showAuthForm'])->name('auth.form');
-Route::post('/login', [AuthController::class, 'login'])->name('login');
-Route::post('/register', [AuthController::class, 'register'])->name('register');
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Dashboard routes (protected by auth middleware)
 Route::middleware(['auth'])->group(function () {
@@ -111,8 +104,11 @@ Route::middleware(['auth'])->group(function () {
         return 'Test email sent';
     });
 
-    // Profile management
+    // Profile management - Role-based routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::get('/admin/profile', [ProfileController::class, 'edit'])->name('admin.profile');
+    Route::get('/agent/profile', [ProfileController::class, 'edit'])->name('agent.profile');
+    Route::get('/citoyen/profile', [ProfileController::class, 'edit'])->name('citoyen.profile');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });

@@ -690,7 +690,7 @@
                 commentDiv.className = 'border-b border-gray-200 pb-3 mb-3';
                 commentDiv.innerHTML = `
                     <div class="flex justify-between items-start mb-1">
-                        <span class="font-medium text-gray-900 text-xs">${comment.id_ecrivain}</span>
+                        <span class="font-medium text-gray-900 text-xs">${comment.nom_ecrivain || comment.id_ecrivain}</span>
                         <span class="text-xs text-gray-500">${comment.created_at}</span>
                     </div>
                     <p class="text-gray-700 mb-2">${comment.commentaire}</p>

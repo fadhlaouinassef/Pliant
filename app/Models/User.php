@@ -44,5 +44,13 @@ class User extends Authenticatable
     {
         return $this->notifications()->where('etat', false);
     }
+    
+    /**
+     * Relation avec les réclamations (pour les citoyens)
+     */
+    public function reclamations()
+    {
+        return $this->hasMany(Reclamation::class, 'id_citoyen');
+    }
 }
 ?>
