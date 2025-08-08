@@ -1,107 +1,348 @@
 @extends('citoyen.dashboard')
 
 @section('content')
-<div class="container mx-auto px-4 py-8">
-    <!-- Overlay pour le Blur -->
+<style>
+    /* Styles pour les loaders et animations */
+    .loader-spinner {
+        border: 3px solid #f3f4f6;
+        border-top: 3px solid #3b82f6;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        animation: spin 1s linear infinite;
+    }
+    
+    .loader-overlay {
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(4px);
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .fade-in {
+        animation: fadeIn 0.5s ease-in;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .card-hover {
+        transition: all 0.3s ease;
+    }
+    
+    .card-hover:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+</style>
+
+<div class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
+    <!-- Overlay pour le Blur et Loading -->
     <div id="overlay" class="hidden fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm z-40"></div>
     
-    <div class="flex justify-between items-center mb-8">
-        <h1 class="text-3xl font-bold text-gray-800">Mes Réclamations</h1>
-        <button 
-            onclick="openPopup('reclamationPopup')"
-            class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg flex items-center text-sm"
-        >
-            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-            </svg>
-            Ajouter une réclamation
-        </button>
+    <!-- Loader Global avec contrôles JavaScript -->
+    <div id="global-loader" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-[9999] flex justify-center items-center" style="display: none;">
+        <div class="bg-white rounded-xl p-8 shadow-2xl">
+            <div class="flex items-center space-x-4">
+                <div class="loader-spinner"></div>
+                <span class="text-gray-600 font-medium">Traitement en cours...</span>
+            </div>
+        </div>
     </div>
+
+    <!-- Popup de confirmation de suppression -->
+    <div id="confirmDeletePopup" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-[9998] flex justify-center items-center" style="display: none;">
+        <div class="bg-white rounded-xl p-6 shadow-2xl max-w-md w-full mx-4">
+            <div class="flex items-center mb-4">
+                <div class="p-3 bg-red-100 rounded-full mr-4">
+                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">Confirmer la suppression</h3>
+                    <p class="text-sm text-gray-600">Cette action est irréversible</p>
+                </div>
+            </div>
+            <p class="text-gray-700 mb-6" id="delete-message">Êtes-vous sûr de vouloir supprimer cette réclamation ? Tous les commentaires associés seront également supprimés.</p>
+            <div class="flex justify-end space-x-3">
+                <button onclick="cancelDelete()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">
+                    Annuler
+                </button>
+                <button onclick="confirmDelete()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                    Supprimer
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header avec statistiques -->
+        <div class="mb-8">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
+                <div>
+                    <h1 class="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+                        Mes Réclamations
+                    </h1>
+                    <p class="text-gray-600">Gérez et suivez vos réclamations</p>
+                </div>
+                <button 
+                    onclick="openPopup('reclamationPopup')"
+                    class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-3 rounded-xl flex items-center font-semibold shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-105"
+                >
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    Nouvelle réclamation
+                </button>
+            </div>
+
+            <!-- Tableau de bord des statistiques -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <!-- Total des réclamations -->
+                <div class="bg-white rounded-2xl p-6 shadow-lg card-hover border border-gray-100">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600 mb-1">Total</p>
+                            <p class="text-3xl font-bold text-gray-900" id="total-reclamations">{{ $reclamations->count() }}</p>
+                        </div>
+                        <div class="p-3 bg-blue-100 rounded-full">
+                            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Réclamations en attente -->
+                <div class="bg-white rounded-2xl p-6 shadow-lg card-hover border border-gray-100">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600 mb-1">En attente</p>
+                            <p class="text-3xl font-bold text-orange-600" id="pending-reclamations">{{ $reclamations->where('status', 'en attente')->count() }}</p>
+                        </div>
+                        <div class="p-3 bg-orange-100 rounded-full">
+                            <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Réclamations en cours -->
+                <div class="bg-white rounded-2xl p-6 shadow-lg card-hover border border-gray-100">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600 mb-1">En cours</p>
+                            <p class="text-3xl font-bold text-blue-600" id="inprogress-reclamations">{{ $reclamations->where('status', 'en cours')->count() }}</p>
+                        </div>
+                        <div class="p-3 bg-blue-100 rounded-full">
+                            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Réclamations résolues -->
+                <div class="bg-white rounded-2xl p-6 shadow-lg card-hover border border-gray-100">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600 mb-1">Résolues</p>
+                            <p class="text-3xl font-bold text-green-600" id="resolved-reclamations">{{ $reclamations->where('status', 'résolue')->count() }}</p>
+                        </div>
+                        <div class="p-3 bg-green-100 rounded-full">
+                            <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Graphiques -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <!-- Graphique en secteurs pour les statuts -->
+                <div class="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Répartition par statut</h3>
+                    <div class="relative h-64">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Graphique en barres pour les priorités -->
+                <div class="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Répartition par priorité</h3>
+                    <div class="relative h-64">
+                        <canvas id="priorityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
     
     <!-- Popup pour ajouter une réclamation -->
-    <div id="reclamationPopup" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md">
-        <div class="bg-white rounded-lg shadow-xl border border-gray-200">
-            <div class="p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold text-gray-900">Nouvelle réclamation</h3>
-                    <button onclick="closePopup('reclamationPopup')" class="text-gray-500 hover:text-gray-700">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <div id="reclamationPopup" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg">
+        <div class="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
+            <!-- Header du formulaire -->
+            <div class="bg-gradient-to-r from-blue-600 to-purple-600 p-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-xl font-bold text-white">Nouvelle réclamation</h3>
+                        <p class="text-blue-100 text-sm">Décrivez votre problème en détail</p>
+                    </div>
+                    <button onclick="closePopup('reclamationPopup')" class="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all duration-200">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
                 </div>
+            </div>
+
+            <!-- Corps du formulaire -->
+            <div class="p-6">
                 <form action="{{ route('reclamations.store') }}" method="POST" enctype="multipart/form-data" onsubmit="handleReclamationSubmit(event)">
                     @csrf
-                    <div class="mb-4">
-                        <label for="titre" class="block text-sm font-medium text-gray-700">Titre</label>
+                    <!-- Titre -->
+                    <div class="mb-6">
+                        <label for="titre" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                            </svg>
+                            Titre de la réclamation
+                        </label>
                         <input 
                             type="text" 
                             name="titre" 
                             id="titre" 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white" 
                             required 
-                            placeholder="Entrez le titre de la réclamation"
+                            placeholder="Ex: Problème d'éclairage public"
                         >
                         @error('titre')
-                            <span class="text-red-500 text-sm">{{ $message }}</span>
+                            <span class="text-red-500 text-sm mt-1 flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                                {{ $message }}
+                            </span>
                         @enderror
                     </div>
-                    <div class="mb-4">
-                        <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+
+                    <!-- Description -->
+                    <div class="mb-6">
+                        <label for="description" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/>
+                            </svg>
+                            Description détaillée
+                        </label>
                         <textarea 
                             name="description" 
                             id="description" 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                            rows="5" 
+                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white resize-none" 
+                            rows="4" 
                             required 
-                            placeholder="Décrivez votre réclamation ici..."
+                            placeholder="Décrivez votre réclamation en détail : lieu, nature du problème, impact..."
                         ></textarea>
                         @error('description')
-                            <span class="text-red-500 text-sm">{{ $message }}</span>
+                            <span class="text-red-500 text-sm mt-1 flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                                {{ $message }}
+                            </span>
                         @enderror
                     </div>
-                    <div class="mb-4">
-                        <label for="priorite" class="block text-sm font-medium text-gray-700">Priorité</label>
-                        <select 
-                            name="priorite" 
-                            id="priorite" 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                            required
-                        >
-                            <option value="faible">Faible</option>
-                            <option value="moyenne">Moyenne</option>
-                            <option value="elevee">Élevée</option>
-                        </select>
+
+                    <!-- Priorité -->
+                    <div class="mb-6">
+                        <label for="priorite" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                            </svg>
+                            Niveau de priorité
+                        </label>
+                        <div class="relative">
+                            <select 
+                                name="priorite" 
+                                id="priorite" 
+                                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white appearance-none cursor-pointer" 
+                                required
+                            >
+                                <option value="">Sélectionnez une priorité</option>
+                                <option value="faible" class="text-green-600">🟢 Faible - Non urgent</option>
+                                <option value="moyenne" class="text-yellow-600">🟡 Moyenne - Modérément urgent</option>
+                                <option value="elevee" class="text-red-600">🔴 Élevée - Urgent</option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </div>
+                        </div>
                         @error('priorite')
-                            <span class="text-red-500 text-sm">{{ $message }}</span>
+                            <span class="text-red-500 text-sm mt-1 flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                                {{ $message }}
+                            </span>
                         @enderror
                     </div>
-                    <div class="mb-4">
-                        <label for="fichier" class="block text-sm font-medium text-gray-700">Fichier (optionnel)</label>
-                        <input 
-                            type="file" 
-                            name="fichier" 
-                            id="fichier" 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            accept=".jpg,.jpeg,.png,.pdf"
-                        >
+
+                    <!-- Fichier -->
+                    <div class="mb-6">
+                        <label for="fichier" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                            </svg>
+                            Pièce jointe (optionnelle)
+                        </label>
+                        <div class="relative">
+                            <input 
+                                type="file" 
+                                name="fichier" 
+                                id="fichier" 
+                                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                accept=".jpg,.jpeg,.png,.pdf"
+                            >
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Formats acceptés: JPG, PNG, PDF (max 2MB)</p>
                         @error('fichier')
-                            <span class="text-red-500 text-sm">{{ $message }}</span>
+                            <span class="text-red-500 text-sm mt-1 flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                                {{ $message }}
+                            </span>
                         @enderror
                     </div>
-                    <div class="flex justify-end space-x-3">
+
+                    <!-- Boutons d'action -->
+                    <div class="flex justify-end space-x-3 pt-4 border-t border-gray-100">
                         <button
                             type="button"
                             onclick="closePopup('reclamationPopup')"
-                            class="px-3 py-1.5 bg-gray-200 text-gray-800 text-sm font-medium rounded-md shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                            class="px-6 py-3 bg-gray-100 text-gray-700 font-medium rounded-xl shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-all duration-200 flex items-center"
                         >
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
                             Annuler
                         </button>
                         <button
                             type="submit"
-                            class="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            class="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-xl shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 flex items-center transform hover:scale-105"
                         >
-                            Envoyer
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                            </svg>
+                            Envoyer la réclamation
                         </button>
                     </div>
                 </form>
@@ -110,90 +351,164 @@
     </div>
 
     <!-- Popup pour modifier une réclamation -->
-    <div id="editReclamationPopup" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md">
-        <div class="bg-white rounded-lg shadow-xl border border-gray-200">
-            <div class="p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold text-gray-900">Modifier la réclamation</h3>
-                    <button onclick="closePopup('editReclamationPopup')" class="text-gray-500 hover:text-gray-700">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <div id="editReclamationPopup" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg">
+        <div class="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
+            <!-- Header du formulaire -->
+            <div class="bg-gradient-to-r from-yellow-500 to-orange-500 p-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-xl font-bold text-white">Modifier la réclamation</h3>
+                        <p class="text-yellow-100 text-sm">Mettez à jour les informations</p>
+                    </div>
+                    <button onclick="closePopup('editReclamationPopup')" class="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all duration-200">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
                 </div>
+            </div>
+
+            <!-- Corps du formulaire -->
+            <div class="p-6">
                 <form id="editReclamationForm" method="POST" enctype="multipart/form-data" onsubmit="handleReclamationUpdate(event)">
                     @csrf
                     @method('PUT')
                     <input type="hidden" name="id" id="edit-reclamation-id">
-                    <div class="mb-4">
-                        <label for="edit-titre" class="block text-sm font-medium text-gray-700">Titre</label>
+                    
+                    <!-- Titre -->
+                    <div class="mb-6">
+                        <label for="edit-titre" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                            </svg>
+                            Titre de la réclamation
+                        </label>
                         <input 
                             type="text" 
                             name="titre" 
                             id="edit-titre" 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white" 
                             required 
-                            placeholder="Entrez le titre de la réclamation"
+                            placeholder="Ex: Problème d'éclairage public"
                         >
                         @error('titre')
-                            <span class="text-red-500 text-sm">{{ $message }}</span>
+                            <span class="text-red-500 text-sm mt-1 flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                                {{ $message }}
+                            </span>
                         @enderror
                     </div>
-                    <div class="mb-4">
-                        <label for="edit-description" class="block text-sm font-medium text-gray-700">Description</label>
+
+                    <!-- Description -->
+                    <div class="mb-6">
+                        <label for="edit-description" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/>
+                            </svg>
+                            Description détaillée
+                        </label>
                         <textarea 
                             name="description" 
                             id="edit-description" 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                            rows="5" 
+                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white resize-none" 
+                            rows="4" 
                             required 
-                            placeholder="Décrivez votre réclamation ici..."
+                            placeholder="Décrivez votre réclamation en détail..."
                         ></textarea>
                         @error('description')
-                            <span class="text-red-500 text-sm">{{ $message }}</span>
+                            <span class="text-red-500 text-sm mt-1 flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                                {{ $message }}
+                            </span>
                         @enderror
                     </div>
-                    <div class="mb-4">
-                        <label for="edit-priorite" class="block text-sm font-medium text-gray-700">Priorité</label>
-                        <select 
-                            name="priorite" 
-                            id="edit-priorite" 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                            required
-                        >
-                            <option value="faible">Faible</option>
-                            <option value="moyenne">Moyenne</option>
-                            <option value="elevee">Élevée</option>
-                        </select>
+
+                    <!-- Priorité -->
+                    <div class="mb-6">
+                        <label for="edit-priorite" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                            </svg>
+                            Niveau de priorité
+                        </label>
+                        <div class="relative">
+                            <select 
+                                name="priorite" 
+                                id="edit-priorite" 
+                                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white appearance-none cursor-pointer" 
+                                required
+                            >
+                                <option value="faible" class="text-green-600">🟢 Faible - Non urgent</option>
+                                <option value="moyenne" class="text-yellow-600">🟡 Moyenne - Modérément urgent</option>
+                                <option value="elevee" class="text-red-600">🔴 Élevée - Urgent</option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </div>
+                        </div>
                         @error('priorite')
-                            <span class="text-red-500 text-sm">{{ $message }}</span>
+                            <span class="text-red-500 text-sm mt-1 flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                                {{ $message }}
+                            </span>
                         @enderror
                     </div>
-                    <div class="mb-4">
-                        <label for="edit-fichier" class="block text-sm font-medium text-gray-700">Fichier (optionnel)</label>
-                        <input 
-                            type="file" 
-                            name="fichier" 
-                            id="edit-fichier" 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            accept=".jpg,.jpeg,.png,.pdf"
-                        >
+
+                    <!-- Fichier -->
+                    <div class="mb-6">
+                        <label for="edit-fichier" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                            </svg>
+                            Nouvelle pièce jointe (optionnelle)
+                        </label>
+                        <div class="relative">
+                            <input 
+                                type="file" 
+                                name="fichier" 
+                                id="edit-fichier" 
+                                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100"
+                                accept=".jpg,.jpeg,.png,.pdf"
+                            >
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Formats acceptés: JPG, PNG, PDF (max 2MB)</p>
                         @error('fichier')
-                            <span class="text-red-500 text-sm">{{ $message }}</span>
+                            <span class="text-red-500 text-sm mt-1 flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                                {{ $message }}
+                            </span>
                         @enderror
                     </div>
-                    <div class="flex justify-end space-x-3">
+
+                    <!-- Boutons d'action -->
+                    <div class="flex justify-end space-x-3 pt-4 border-t border-gray-100">
                         <button
                             type="button"
                             onclick="closePopup('editReclamationPopup')"
-                            class="px-3 py-1.5 bg-gray-200 text-gray-800 text-sm font-medium rounded-md shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                            class="px-6 py-3 bg-gray-100 text-gray-700 font-medium rounded-xl shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-all duration-200 flex items-center"
                         >
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
                             Annuler
                         </button>
                         <button
                             type="submit"
-                            class="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            class="px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-medium rounded-xl shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-all duration-200 flex items-center transform hover:scale-105"
                         >
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
                             Mettre à jour
                         </button>
                     </div>
@@ -203,181 +518,257 @@
     </div>
     
     <!-- Popup pour voir les détails d'une réclamation -->
-    <div id="detailsPopup" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-2xl">
-        <div class="bg-white rounded-lg shadow-xl border border-gray-200">
-            <div class="p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold text-gray-900">Détails de la réclamation</h3>
-                    <button onclick="closePopup('detailsPopup')" class="text-gray-500 hover:text-gray-700">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+    <div id="detailsPopup" class="hidden fixed inset-4 z-50 overflow-hidden">
+        <div class="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col h-full max-w-6xl mx-auto">
+            <!-- Header moderne avec dégradé - Plus compact -->
+            <div class="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 p-4">
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <h3 class="text-xl font-bold text-white mb-1" id="reclamation-title">Détails de la réclamation</h3>
+                        <div class="flex items-center space-x-3">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full text-white bg-white bg-opacity-20 backdrop-blur-sm" id="reclamation-status">Statut</span>
+                            <div class="flex items-center text-indigo-100">
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span class="text-xs" id="reclamation-created-at">Date</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="closePopup('detailsPopup')" class="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-1 transition-all duration-200 ml-4">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
                     </button>
                 </div>
-                
-                <div class="mb-6">
-                    <h4 class="text-lg font-medium text-gray-900 mb-2" id="reclamation-title"></h4>
-                    <p class="text-gray-700" id="reclamation-description"></p>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div class="bg-gray-100 p-4 rounded-lg">
-                        <h5 class="font-medium text-gray-900 mb-2">Informations</h5>
-                        <ul class="space-y-2 text-sm text-gray-700">
-                            <li class="flex items-center">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                <span id="reclamation-created-at"></span>
-                            </li>
-                            <li class="flex items-center">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                </svg>
-                                <span id="reclamation-priorite"></span>
-                            </li>
-                            <li class="flex items-center">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14 a7 7 0 00-7-7z"></path>
-                                </svg>
-                                <span>Agent: <span id="reclamation-agent"></span></span>
-                            </li>
-                        </ul>
-                    </div>
-                    
-                    <div class="bg-gray-100 p-4 rounded-lg">
-                        <h5 class="font-medium text-gray-900 mb-2">Statut</h5>
-                        <div class="flex items-center mb-3">
-                            <span id="reclamation-status" class="px-3 py-1 text-xs font-medium rounded-full"></span>
-                        </div>
-                        <div class="space-y-2 text-sm text-gray-700">
-                            <p id="reclamation-updated-at"></p>
-                            <p>Progression: En attente de réparation</p>
-                            <div id="existing-feedback" class="mt-2"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="bg-gray-100 p-4 rounded-lg mb-6">
-                    <h5 class="font-medium text-gray-900 mb-2">Commentaires</h5>
-                    <div class="text-sm text-gray-700 space-y-3" id="comments-section">
-                        <p>Chargement des commentaires...</p>
-                    </div>
-                    
-                    <button 
-                        id="toggle-comments-button" 
-                        class="hidden mt-4 text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
-                        onclick="toggleComments()"
-                    >
-                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
-                        </svg>
-                        <span id="toggle-comments-text">Voir plus</span>
-                    </button>
-                    
-                    <!-- Formulaire de commentaire -->
-                    <div id="comment-form" class="hidden mt-4">
-                        <form action="{{ route('comments.store') }}" method="POST" onsubmit="handleCommentSubmit(event)">
-                            @csrf
-                            <input type="hidden" name="id_reclamation" id="comment-reclamation-id">
-                            <div class="mb-4">
-                                <label for="commentaire" class="block text-sm font-medium text-gray-700">Votre commentaire</label>
-                                <textarea 
-                                    name="commentaire" 
-                                    id="commentaire" 
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                                    rows="4"
-                                    placeholder="Saisir votre commentaire ici..."
-                                    required
-                                ></textarea>
-                                <!-- Error message for validation errors -->
-                                @error('commentaire')
-                                    <span class="text-red-500 text-sm">{{ $message }}</span>
-                                @enderror
-                                <!-- Error message for AJAX errors -->
-                                <div id="comment-error" class="text-red-500 text-sm mt-1 hidden"></div>
-                            </div>
-                            <div class="flex justify-end space-x-3">
-                                <button
-                                    type="button"
-                                    onclick="toggleCommentForm()"
-                                    class="px-3 py-1.5 bg-gray-200 text-gray-800 text-sm font-medium rounded-md shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                                >
-                                    Annuler
-                                </button>
-                                <button
-                                    type="submit"
-                                    class="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                    Envoyer
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+            </div>
 
-                    <!-- Feedback Section -->
-                    <div id="feedback-section" class="hidden mt-4">
-                        <form id="feedback-form" method="POST" onsubmit="handleFeedbackSubmit(event)">
-                            @csrf
-                            <input type="hidden" name="id_reclamation" id="feedback-reclamation-id">
-                            <div class="mb-4">
-                                <label for="satisfaction" class="block text-sm font-medium text-gray-700">Évaluation</label>
-                                <div class="flex items-center space-x-2">
-                                    <div class="star-rating" id="star-rating">
-                                        <input type="radio" name="satisfaction_citoyen" id="star5" value="5" class="hidden" />
-                                        <label for="star5" class="cursor-pointer text-xl text-gray-300 hover:text-yellow-400">★</label>
-                                        <input type="radio" name="satisfaction_citoyen" id="star4" value="4" class="hidden" />
-                                        <label for="star4" class="cursor-pointer text-xl text-gray-300 hover:text-yellow-400">★</label>
-                                        <input type="radio" name="satisfaction_citoyen" id="star3" value="3" class="hidden" />
-                                        <label for="star3" class="cursor-pointer text-xl text-gray-300 hover:text-yellow-400">★</label>
-                                        <input type="radio" name="satisfaction_citoyen" id="star2" value="2" class="hidden" />
-                                        <label for="star2" class="cursor-pointer text-xl text-gray-300 hover:text-yellow-400">★</label>
-                                        <input type="radio" name="satisfaction_citoyen" id="star1" value="1" class="hidden" />
-                                        <label for="star1" class="cursor-pointer text-xl text-gray-300 hover:text-yellow-400">★</label>
-                                    </div>
+            <!-- Corps de la popup avec scroll optimisé -->
+            <div class="flex-1 overflow-y-auto min-h-0">
+                <div class="p-4">
+                    <!-- Description principale - Plus compacte -->
+                    <div class="mb-4">
+                        <div class="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg p-4 border-l-4 border-indigo-500">
+                            <h4 class="text-base font-semibold text-gray-900 mb-2 flex items-center">
+                                <svg class="w-4 h-4 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/>
+                                </svg>
+                                Description
+                            </h4>
+                            <p class="text-sm text-gray-700 leading-relaxed" id="reclamation-description">Description de la réclamation</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Informations détaillées en grille - Plus compactes -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                        <!-- Informations générales -->
+                        <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
+                            <h5 class="font-semibold text-gray-900 mb-3 flex items-center text-sm">
+                                <div class="p-1.5 bg-blue-100 rounded-lg mr-2">
+                                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
                                 </div>
-                                @error('satisfaction_citoyen')
-                                    <span class="text-red-500 text-sm">{{ $message }}</span>
-                                @enderror
+                                Informations générales
+                            </h5>
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between py-1.5 border-b border-gray-100">
+                                    <span class="text-xs text-gray-600">Priorité</span>
+                                    <span class="font-medium text-xs" id="reclamation-priorite">Priorité</span>
+                                </div>
+                                <div class="flex items-center justify-between py-1.5 border-b border-gray-100">
+                                    <span class="text-xs text-gray-600">Agent assigné</span>
+                                    <span class="font-medium text-xs" id="reclamation-agent">Agent</span>
+                                </div>
+                                <div class="flex items-center justify-between py-1.5">
+                                    <span class="text-xs text-gray-600">Dernière mise à jour</span>
+                                    <span class="font-medium text-xs" id="reclamation-updated-at">Date</span>
+                                </div>
                             </div>
-                            <div class="flex justify-end space-x-3">
-                                <button
-                                    type="button"
-                                    onclick="toggleFeedbackForm()"
-                                    class="px-3 py-1.5 bg-gray-200 text-gray-800 text-sm font-medium rounded-md shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                                >
-                                    Annuler
-                                </button>
-                                <button
-                                    type="submit"
-                                    class="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                    Envoyer l'évaluation
-                                </button>
+                        </div>
+                        
+                        <!-- Statut et progression -->
+                        <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
+                            <h5 class="font-semibold text-gray-900 mb-3 flex items-center text-sm">
+                                <div class="p-1.5 bg-green-100 rounded-lg mr-2">
+                                    <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </div>
+                                Suivi et évaluation
+                            </h5>
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between py-1.5 border-b border-gray-100">
+                                    <span class="text-xs text-gray-600">Progression</span>
+                                    <span class="text-xs text-blue-600">En cours de traitement</span>
+                                </div>
+                                <div id="existing-feedback" class="py-1.5"></div>
                             </div>
-                        </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Section des commentaires modernisée - Hauteur fixe -->
+                    <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+                        <h5 class="font-semibold text-gray-900 mb-3 flex items-center text-sm">
+                            <div class="p-1.5 bg-purple-100 rounded-lg mr-2">
+                                <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                                </svg>
+                            </div>
+                            Discussion et commentaires
+                        </h5>
+                        <div class="bg-white rounded-lg p-3 border border-purple-200 h-24 flex flex-col">
+                            <div class="text-sm text-gray-700 space-y-2 flex-1 overflow-y-auto" id="comments-section">
+                                <div class="flex items-center justify-center py-4">
+                                    <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                                    <span class="ml-2 text-gray-500 text-xs">Chargement des commentaires...</span>
+                                </div>
+                            </div>
+                            
+                            <button 
+                                id="toggle-comments-button" 
+                                style="display: none"
+                                class="mt-2 pt-2 border-t border-gray-100 text-purple-600 hover:text-purple-800 text-xs font-medium flex items-center justify-center transition-colors duration-200 flex-shrink-0"
+                                onclick="toggleComments()"
+                            >
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                                <span id="toggle-comments-text">Voir plus</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Formulaire de commentaire modernisé - Hauteur contrôlée -->
+                        <div id="comment-form" class="hidden mt-3 max-h-28">
+                            <form action="{{ route('comments.store') }}" method="POST" onsubmit="handleCommentSubmit(event)">
+                                @csrf
+                                <input type="hidden" name="id_reclamation" id="comment-reclamation-id">
+                                <div class="mb-2">
+                                    <label for="commentaire" class="block text-xs font-semibold text-gray-700 mb-1">
+                                        <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
+                                        </svg>
+                                        Votre commentaire
+                                    </label>
+                                    <textarea 
+                                        name="commentaire" 
+                                        id="commentaire" 
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white resize-none text-sm" 
+                                        rows="2"
+                                        placeholder="Votre commentaire..."
+                                        required
+                                    ></textarea>
+                                    @error('commentaire')
+                                        <span class="text-red-500 text-xs">{{ $message }}</span>
+                                    @enderror
+                                    <div id="comment-error" class="text-red-500 text-xs mt-1 hidden"></div>
+                                </div>
+                                <div class="flex justify-end space-x-2">
+                                    <button
+                                        type="button"
+                                        onclick="toggleCommentForm()"
+                                        class="px-3 py-1.5 bg-gray-100 text-gray-700 font-medium rounded-lg shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-all duration-200 text-xs"
+                                    >
+                                        Annuler
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        class="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium rounded-lg shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200 transform hover:scale-105 text-xs"
+                                    >
+                                        <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                                        </svg>
+                                        Envoyer
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Section Feedback modernisée - Hauteur contrôlée -->
+                        <div id="feedback-section" class="hidden mt-3 max-h-24">
+                            <form id="feedback-form" method="POST" onsubmit="handleFeedbackSubmit(event)">
+                                @csrf
+                                <input type="hidden" name="id_reclamation" id="feedback-reclamation-id">
+                                <div class="mb-2">
+                                    <label for="satisfaction" class="block text-xs font-semibold text-gray-700 mb-1">
+                                        <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                                        </svg>
+                                        Évaluation
+                                    </label>
+                                    <div class="flex items-center justify-center space-x-1 p-1 bg-white rounded-lg border border-gray-200">
+                                        <div class="star-rating" id="star-rating">
+                                            <input type="radio" name="satisfaction_citoyen" id="star5" value="5" class="hidden" />
+                                            <label for="star5" class="cursor-pointer text-lg text-gray-300 hover:text-yellow-400 transition-colors duration-200">★</label>
+                                            <input type="radio" name="satisfaction_citoyen" id="star4" value="4" class="hidden" />
+                                            <label for="star4" class="cursor-pointer text-lg text-gray-300 hover:text-yellow-400 transition-colors duration-200">★</label>
+                                            <input type="radio" name="satisfaction_citoyen" id="star3" value="3" class="hidden" />
+                                            <label for="star3" class="cursor-pointer text-lg text-gray-300 hover:text-yellow-400 transition-colors duration-200">★</label>
+                                            <input type="radio" name="satisfaction_citoyen" id="star2" value="2" class="hidden" />
+                                            <label for="star2" class="cursor-pointer text-lg text-gray-300 hover:text-yellow-400 transition-colors duration-200">★</label>
+                                            <input type="radio" name="satisfaction_citoyen" id="star1" value="1" class="hidden" />
+                                            <label for="star1" class="cursor-pointer text-lg text-gray-300 hover:text-yellow-400 transition-colors duration-200">★</label>
+                                        </div>
+                                    </div>
+                                    @error('satisfaction_citoyen')
+                                        <span class="text-red-500 text-xs">{{ $message }}</span>
+                                    @enderror
+                                </div>
+                                <div class="flex justify-end space-x-2">
+                                    <button
+                                        type="button"
+                                        onclick="toggleFeedbackForm()"
+                                        class="px-3 py-1.5 bg-gray-100 text-gray-700 font-medium rounded-lg shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-all duration-200 text-xs"
+                                    >
+                                        Annuler
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        class="px-3 py-1.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-medium rounded-lg shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-all duration-200 transform hover:scale-105 text-xs"
+                                    >
+                                        <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                                        </svg>
+                                        Évaluer
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
-                
-                <div class="flex justify-end space-x-3">
+            </div>
+            
+            <!-- Footer avec boutons d'action - Toujours visible -->
+            <div class="bg-gray-50 border-t border-gray-200 px-4 py-3 flex-shrink-0">
+                <div class="flex flex-wrap justify-end space-x-2">
                     <button
                         onclick="closePopup('detailsPopup')"
-                        class="px-3 py-1.5 bg-gray-200 text-gray-800 text-sm font-medium rounded-md shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                        class="px-4 py-2 bg-gray-200 text-gray-700 font-medium rounded-lg shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-all duration-200 flex items-center text-sm"
                     >
+                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
                         Fermer
                     </button>
                     <button
                         onclick="toggleCommentForm()"
-                        class="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        class="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 flex items-center transform hover:scale-105 text-sm"
                     >
-                        Ajouter un commentaire
+                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
+                        </svg>
+                        Commentaire
                     </button>
                     <button
                         id="feedback-button"
                         onclick="toggleFeedbackForm()"
-                        class="hidden px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                        style="display: none"
+                        class="px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 text-white font-medium rounded-lg shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200 flex items-center transform hover:scale-105 text-sm"
                     >
-                        Donner un retour
+                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                        </svg>
+                        Évaluer
                     </button>
                 </div>
             </div>
@@ -542,14 +933,125 @@
     @endif
 </div>
 
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
-    // Set up CSRF token for AJAX requests
+    // Variables globales
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
     let isCommentsExpanded = false;
     let isFeedbackFormVisible = false;
-    let selectedRating = 0; // Track the selected rating
+    let selectedRating = 0;
+    let pendingDeleteAction = null;
 
-    // Function to update star ratings
+    // Données pour les graphiques
+    const statusData = {
+        'en attente': {{ $reclamations->where('status', 'en attente')->count() }},
+        'en cours': {{ $reclamations->where('status', 'en cours')->count() }},
+        'résolue': {{ $reclamations->where('status', 'résolue')->count() }},
+        'rejetée': {{ $reclamations->where('status', 'rejetée')->count() }}
+    };
+
+    const priorityData = {
+        'faible': {{ $reclamations->where('priorite', 'faible')->count() }},
+        'moyenne': {{ $reclamations->where('priorite', 'moyenne')->count() }},
+        'elevee': {{ $reclamations->where('priorite', 'elevee')->count() }}
+    };
+
+    // Fonctions pour gérer les loaders
+    function showLoader() {
+        document.getElementById('global-loader').style.display = 'flex';
+    }
+
+    function hideLoader() {
+        document.getElementById('global-loader').style.display = 'none';
+    }
+
+    // Fonctions pour gérer la popup de confirmation de suppression
+    function showDeleteConfirm(message, action) {
+        document.getElementById('delete-message').textContent = message;
+        document.getElementById('confirmDeletePopup').style.display = 'flex';
+        pendingDeleteAction = action;
+    }
+
+    function cancelDelete() {
+        document.getElementById('confirmDeletePopup').style.display = 'none';
+        pendingDeleteAction = null;
+    }
+
+    function confirmDelete() {
+        if (pendingDeleteAction) {
+            document.getElementById('confirmDeletePopup').style.display = 'none';
+            pendingDeleteAction();
+            pendingDeleteAction = null;
+        }
+    }
+
+    // Initialisation des graphiques
+    function initializeCharts() {
+        // Graphique des statuts
+        const statusCtx = document.getElementById('statusChart').getContext('2d');
+        new Chart(statusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['En attente', 'En cours', 'Résolues', 'Rejetées'],
+                datasets: [{
+                    data: [statusData['en attente'], statusData['en cours'], statusData['résolue'], statusData['rejetée']],
+                    backgroundColor: ['#f59e0b', '#3b82f6', '#10b981', '#ef4444'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 20,
+                            usePointStyle: true
+                        }
+                    }
+                }
+            }
+        });
+
+        // Graphique des priorités
+        const priorityCtx = document.getElementById('priorityChart').getContext('2d');
+        new Chart(priorityCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Faible', 'Moyenne', 'Élevée'],
+                datasets: [{
+                    label: 'Nombre de réclamations',
+                    data: [priorityData['faible'], priorityData['moyenne'], priorityData['elevee']],
+                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+                    borderRadius: 8,
+                    borderSkipped: false,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Fonction pour mettre à jour les étoiles
     function updateStarRating(rating) {
         selectedRating = rating;
         const labels = document.querySelectorAll('#star-rating label');
@@ -564,7 +1066,7 @@
         });
     }
 
-    // Function to display existing feedback
+    // Fonction pour afficher le feedback existant
     function displayExistingFeedback(rating) {
         const feedbackDiv = document.getElementById('existing-feedback');
         if (rating) {
@@ -578,7 +1080,7 @@
         }
     }
 
-    // Function to reset star ratings
+    // Fonction pour réinitialiser les étoiles
     function resetStarRating() {
         selectedRating = 0;
         const labels = document.querySelectorAll('#star-rating label');
@@ -590,13 +1092,13 @@
         inputs.forEach(input => input.checked = false);
     }
 
-    // Function to open a popup
+    // Fonction pour ouvrir les popups
     function openPopup(popupId, button = null) {
         document.getElementById('overlay').classList.remove('hidden');
         document.getElementById(popupId).classList.remove('hidden');
 
         if (popupId === 'detailsPopup' && button) {
-            // Populate popup with reclamation data
+            // Remplir la popup avec les données
             document.getElementById('reclamation-title').textContent = button.dataset.titre;
             document.getElementById('reclamation-description').textContent = button.dataset.description;
             document.getElementById('reclamation-created-at').textContent = 'Créée le: ' + button.dataset.createdAt;
@@ -608,48 +1110,32 @@
             document.getElementById('comment-reclamation-id').value = button.dataset.id;
             document.getElementById('feedback-reclamation-id').value = button.dataset.id;
 
-            // Set feedback form action dynamically
+            // Configurer le formulaire de feedback
             const feedbackForm = document.getElementById('feedback-form');
             feedbackForm.action = `/reclamations/${button.dataset.id}/feedback`;
 
-            // Show feedback button only if agent_id is not null and satisfaction is not set
+            // Afficher le bouton feedback si nécessaire
             const feedbackButton = document.getElementById('feedback-button');
             if (button.dataset.agentId && !button.dataset.satisfaction) {
-                feedbackButton.classList.remove('hidden');
+                feedbackButton.style.display = 'inline-flex';
             } else {
-                feedbackButton.classList.add('hidden');
+                feedbackButton.style.display = 'none';
             }
             
-            // Display existing feedback
+            // Afficher le feedback existant
             displayExistingFeedback(button.dataset.satisfaction ? parseInt(button.dataset.satisfaction) : null);
 
-            // Fetch comments for the reclamation
+            // Charger les commentaires
             fetchComments(button.dataset.id);
-
-            // Update delete button action
-            const deleteButton = document.getElementById('delete-button');
-            deleteButton.onclick = function() {
-                if (confirm('Êtes-vous sûr de vouloir supprimer cette réclamation ?')) {
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = '/reclamations/' + button.dataset.id;
-                    form.innerHTML = `
-                        <input type="hidden" name="_token" value="${csrfToken}">
-                        <input type="hidden" name="_method" value="DELETE">
-                    `;
-                    document.body.appendChild(form);
-                    form.submit();
-                }
-            };
         }
     }
 
-    // Function to open edit popup
+    // Fonction pour ouvrir la popup d'édition
     function openEditPopup(button) {
         document.getElementById('overlay').classList.remove('hidden');
         document.getElementById('editReclamationPopup').classList.remove('hidden');
 
-        // Populate edit form with reclamation data
+        // Remplir le formulaire
         document.getElementById('edit-reclamation-id').value = button.dataset.id;
         document.getElementById('edit-titre').value = button.dataset.titre;
         document.getElementById('edit-description').value = button.dataset.description;
@@ -657,7 +1143,7 @@
         document.getElementById('editReclamationForm').action = `/reclamations/${button.dataset.id}`;
     }
 
-    // Function to fetch comments
+    // Fonction pour charger les commentaires
     function fetchComments(reclamationId) {
         fetch(`/reclamations/${reclamationId}/commentaires`, {
             method: 'GET',
@@ -666,12 +1152,7 @@
                 'X-CSRF-TOKEN': csrfToken
             }
         })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erreur réseau: ' + response.statusText);
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(comments => {
             const commentsSection = document.getElementById('comments-section');
             const toggleButton = document.getElementById('toggle-comments-button');
@@ -679,7 +1160,7 @@
 
             if (comments.length === 0) {
                 commentsSection.innerHTML = '<p class="text-gray-500">Aucun commentaire pour cette réclamation.</p>';
-                toggleButton.classList.add('hidden');
+                toggleButton.style.display = 'none';
                 return;
             }
 
@@ -696,16 +1177,12 @@
                     <p class="text-gray-700 mb-2">${comment.commentaire}</p>
                     ${comment.can_delete ? `
                     <div class="flex justify-end">
-                        <form action="/comments/${comment.id}" method="POST" onsubmit="handleCommentDelete(event, ${reclamationId})">
-                            <input type="hidden" name="_token" value="${csrfToken}">
-                            <input type="hidden" name="_method" value="DELETE">
-                            <button type="submit" class="text-red-600 hover:text-red-800 text-xs font-medium flex items-center">
-                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                </svg>
-                                Supprimer
-                            </button>
-                        </form>
+                        <button onclick="deleteComment(${comment.id}, ${reclamationId})" class="text-red-600 hover:text-red-800 text-xs font-medium flex items-center">
+                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                            Supprimer
+                        </button>
                     </div>
                     ` : ''}
                 `;
@@ -713,211 +1190,61 @@
             });
 
             if (comments.length > 2) {
-                toggleButton.classList.remove('hidden');
+                toggleButton.style.display = 'flex';
                 toggleButton.querySelector('#toggle-comments-text').textContent = isCommentsExpanded ? 'Voir moins' : 'Voir plus';
             } else {
-                toggleButton.classList.add('hidden');
+                toggleButton.style.display = 'none';
             }
         })
         .catch(error => {
-            console.error('Error fetching comments:', error);
+            console.error('Erreur lors du chargement des commentaires:', error);
             document.getElementById('comments-section').innerHTML = 
-                '<p class="text-red-500">Erreur lors du chargement des commentaires. Veuillez rafraîchir la page.</p>';
+                '<p class="text-red-500">Erreur lors du chargement des commentaires.</p>';
         });
     }
 
-    // Function to handle comment form submission
-    function handleCommentSubmit(event) {
-        event.preventDefault();
-        const form = event.target;
-        const reclamationId = document.getElementById('comment-reclamation-id').value;
-        
-        // Désactiver le bouton d'envoi pour éviter les soumissions multiples
-        const submitButton = form.querySelector('button[type="submit"]');
-        if (submitButton) {
-            submitButton.disabled = true;
-            submitButton.textContent = 'Envoi en cours...';
-        }
-        
-        // Effacer les messages d'erreur précédents
-        const errorEl = document.getElementById('comment-error');
-        if (errorEl) {
-            errorEl.textContent = '';
-            errorEl.classList.add('hidden');
-        }
-
-        fetch(form.action, {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
-            },
-            body: new FormData(form)
-        })
-        .then(response => {
-            // Si la réponse est une redirection (302, 301), c'est une réussite (Laravel redirect()->back())
-            if (response.redirected || response.ok) {
-                form.reset();
-                toggleCommentForm();
-                fetchComments(reclamationId);
-                return { success: true };
+    // Fonction pour supprimer un commentaire
+    function deleteComment(commentId, reclamationId) {
+        showDeleteConfirm(
+            'Êtes-vous sûr de vouloir supprimer ce commentaire ?',
+            () => {
+                showLoader();
+                const formData = new FormData();
+                formData.append('_method', 'DELETE');
+                formData.append('_token', csrfToken);
+                
+                fetch(`/comments/${commentId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    body: formData
+                })
+                .then(response => {
+                    if (response.ok || response.redirected) {
+                        fetchComments(reclamationId);
+                    } else {
+                        return response.json().then(err => {
+                            throw new Error(err.message || 'Erreur lors de la suppression');
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    alert('Erreur lors de la suppression du commentaire: ' + error.message);
+                })
+                .finally(() => {
+                    hideLoader();
+                });
             }
-            
-            // Si c'est une erreur 500, il y a probablement un problème avec la notification
-            // mais le commentaire a été enregistré
-            if (response.status === 500) {
-                form.reset();
-                toggleCommentForm();
-                fetchComments(reclamationId);
-                console.warn('Commentaire enregistré mais erreur de notification');
-                return { success: true, warning: 'Notification non envoyée' };
-            }
-            
-            // Pour les autres erreurs, tenter de récupérer le message d'erreur
-            return response.text().then(text => {
-                try {
-                    return { success: false, error: JSON.parse(text) };
-                } catch (e) {
-                    throw new Error('Erreur réseau: ' + response.statusText);
-                }
-            });
-        })
-        .then(result => {
-            if (result.success) {
-                // Le commentaire a été enregistré avec succès
-                if (result.warning) {
-                    console.warn(result.warning);
-                }
-            } else if (result.error) {
-                // Afficher l'erreur
-                if (errorEl) {
-                    errorEl.textContent = result.error.message || 'Erreur lors de l\'envoi du commentaire';
-                    errorEl.classList.remove('hidden');
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error submitting comment:', error);
-            
-            // Afficher un message d'erreur
-            if (errorEl) {
-                errorEl.textContent = error.message || 'Erreur lors de l\'envoi du commentaire';
-                errorEl.classList.remove('hidden');
-            } else {
-                alert('Erreur lors de l\'envoi du commentaire: ' + error.message);
-            }
-        })
-        .finally(() => {
-            // Réactiver le bouton
-            if (submitButton) {
-                submitButton.disabled = false;
-                submitButton.textContent = 'Envoyer';
-            }
-        });
+        );
     }
 
-    // Function to handle feedback submission
-    function handleFeedbackSubmit(event) {
-        event.preventDefault();
-        const form = event.target;
-        const reclamationId = document.getElementById('feedback-reclamation-id').value;
-
-        fetch(form.action, {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
-            },
-            body: new FormData(form)
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erreur réseau: ' + response.statusText);
-            }
-            return response.text();
-        })
-        .then(text => {
-            try {
-                const data = JSON.parse(text);
-                form.reset();
-                resetStarRating();
-                toggleFeedbackForm();
-                window.location.reload();
-            } catch (e) {
-                form.reset();
-                resetStarRating();
-                toggleFeedbackForm();
-                window.location.reload();
-            }
-        })
-        .catch(error => {
-            console.error('Error submitting feedback:', error);
-            alert('Erreur lors de l\'envoi de l\'évaluation: ' + error.message);
-        });
-    }
-
-    // Function to handle comment deletion
-    function handleCommentDelete(event, reclamationId) {
-        event.preventDefault();
-        if (!confirm('Êtes-vous sûr de vouloir supprimer ce commentaire ?')) {
-            return;
-        }
-
-        const form = event.target;
-
-        fetch(form.action, {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': csrfToken,
-                'X-HTTP-Method-Override': 'DELETE'
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erreur réseau: ' + response.statusText);
-            }
-            fetchComments(reclamationId);
-        })
-        .catch(error => {
-            console.error('Error deleting comment:', error);
-            alert('Erreur lors de la suppression du commentaire. Veuillez réessayer.');
-        });
-    }
-
-    // Function to handle reclamation deletion
-    function handleReclamationDelete(event, reclamationId) {
-        event.preventDefault();
-        if (!confirm('Êtes-vous sûr de vouloir supprimer cette réclamation ?')) {
-            return;
-        }
-
-        const form = event.target;
-
-        fetch(form.action, {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': csrfToken,
-                'X-HTTP-Method-Override': 'DELETE'
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erreur réseau: ' + response.statusText);
-            }
-            closePopup('detailsPopup');
-            window.location.reload();
-        })
-        .catch(error => {
-            console.error('Error deleting reclamation:', error);
-            alert('Erreur lors de la suppression de la réclamation. Veuillez réessayer.');
-        });
-    }
-
-    // Function to handle reclamation submission
+    // Gestion des soumissions de formulaires avec loaders
     function handleReclamationSubmit(event) {
         event.preventDefault();
+        showLoader();
         const form = event.target;
 
         fetch(form.action, {
@@ -929,54 +1256,171 @@
             body: new FormData(form)
         })
         .then(response => {
-            if (!response.ok) {
-                throw new Error('Erreur réseau: ' + response.statusText);
+            if (response.ok || response.redirected) {
+                closePopup('reclamationPopup');
+                location.reload();
+            } else {
+                return response.json().then(err => {
+                    throw new Error(err.message || 'Erreur de soumission');
+                });
             }
-            closePopup('reclamationPopup');
-            window.location.reload();
         })
         .catch(error => {
-            console.error('Error submitting reclamation:', error);
-            alert('Erreur lors de l\'envoi de la réclamation. Veuillez réessayer.');
+            console.error('Erreur:', error);
+            alert('Erreur lors de la soumission: ' + error.message);
+        })
+        .finally(() => {
+            hideLoader();
         });
     }
 
-    // Function to handle reclamation update
     function handleReclamationUpdate(event) {
         event.preventDefault();
+        showLoader();
         const form = event.target;
-        const reclamationId = document.getElementById('edit-reclamation-id').value;
+        const formData = new FormData(form);
+        
+        // Ajouter explicitement la méthode PUT
+        formData.append('_method', 'PUT');
+
+        fetch(form.action, {
+            method: 'POST', // Laravel utilise POST avec _method pour PUT
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: formData
+        })
+        .then(response => {
+            if (response.ok || response.redirected) {
+                closePopup('editReclamationPopup');
+                location.reload();
+            } else {
+                return response.json().then(err => {
+                    throw new Error(err.message || 'Erreur de mise à jour');
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de la mise à jour: ' + error.message);
+        })
+        .finally(() => {
+            hideLoader();
+        });
+    }
+
+    function handleReclamationDelete(event, reclamationId) {
+        event.preventDefault();
+        const form = event.target;
+        
+        showDeleteConfirm(
+            'Êtes-vous sûr de vouloir supprimer cette réclamation ? Cette action est irréversible et supprimera tous les commentaires associés.',
+            () => {
+                showLoader();
+                const formData = new FormData();
+                formData.append('_method', 'DELETE');
+                formData.append('_token', csrfToken);
+                
+                fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    body: formData
+                })
+                .then(response => {
+                    if (response.ok || response.redirected) {
+                        location.reload();
+                    } else {
+                        return response.json().then(err => {
+                            throw new Error(err.message || 'Erreur de suppression');
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    alert('Erreur lors de la suppression: ' + error.message);
+                })
+                .finally(() => {
+                    hideLoader();
+                });
+            }
+        );
+    }
+
+    function handleCommentSubmit(event) {
+        event.preventDefault();
+        showLoader();
+        const form = event.target;
+        const reclamationId = document.getElementById('comment-reclamation-id').value;
 
         fetch(form.action, {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',
-                'X-CSRF-TOKEN': csrfToken,
-                'X-HTTP-Method-Override': 'PUT'
+                'X-CSRF-TOKEN': csrfToken
             },
             body: new FormData(form)
         })
         .then(response => {
-            if (!response.ok) {
-                throw new Error('Erreur réseau: ' + response.statusText);
+            if (response.ok || response.status === 500) {
+                form.reset();
+                toggleCommentForm();
+                fetchComments(reclamationId);
+            } else {
+                throw new Error('Erreur de soumission');
             }
-            closePopup('editReclamationPopup');
-            window.location.reload();
         })
         .catch(error => {
-            console.error('Error updating reclamation:', error);
-            alert('Erreur lors de la mise à jour de la réclamation. Veuillez réessayer.');
+            console.error('Erreur:', error);
+            alert('Erreur lors de l\'envoi du commentaire');
+        })
+        .finally(() => {
+            hideLoader();
         });
     }
 
-    // Function to toggle comments visibility
+    function handleFeedbackSubmit(event) {
+        event.preventDefault();
+        showLoader();
+        const form = event.target;
+
+        fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: new FormData(form)
+        })
+        .then(response => {
+            if (response.ok) {
+                form.reset();
+                resetStarRating();
+                toggleFeedbackForm();
+                location.reload();
+            } else {
+                throw new Error('Erreur de soumission');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de l\'envoi de l\'évaluation');
+        })
+        .finally(() => {
+            hideLoader();
+        });
+    }
+
+    // Fonctions d'interface utilisateur
     function toggleComments() {
         isCommentsExpanded = !isCommentsExpanded;
         const reclamationId = document.getElementById('comment-reclamation-id').value;
         fetchComments(reclamationId);
     }
 
-    // Function to close a popup
     function closePopup(popupId) {
         document.getElementById('overlay').classList.add('hidden');
         document.getElementById(popupId).classList.add('hidden');
@@ -984,11 +1428,9 @@
         document.getElementById('feedback-section').classList.add('hidden');
         isCommentsExpanded = false;
         isFeedbackFormVisible = false;
-        document.getElementById('feedback-button').textContent = 'Donner un retour';
         resetStarRating();
     }
 
-    // Function to toggle the comment form
     function toggleCommentForm() {
         const commentForm = document.getElementById('comment-form');
         commentForm.classList.toggle('hidden');
@@ -997,44 +1439,48 @@
         }
     }
 
-    // Function to toggle the feedback form
     function toggleFeedbackForm() {
         isFeedbackFormVisible = !isFeedbackFormVisible;
         const feedbackSection = document.getElementById('feedback-section');
-        const feedbackButton = document.getElementById('feedback-button');
         feedbackSection.classList.toggle('hidden');
-        feedbackButton.textContent = isFeedbackFormVisible ? 'Envoyer l\'évaluation' : 'Donner un retour';
         if (!feedbackSection.classList.contains('hidden')) {
             resetStarRating();
         }
     }
 
-    // Star rating functionality
-    document.querySelectorAll('#star-rating input').forEach((input, index) => {
-        input.addEventListener('change', () => {
-            updateStarRating(parseInt(input.value));
-        });
-    });
+    // Configuration des étoiles
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialiser les graphiques
+        initializeCharts();
 
-    document.querySelectorAll('#star-rating label').forEach((label, index) => {
-        label.addEventListener('mouseover', () => {
-            const labels = document.querySelectorAll('#star-rating label');
-            for (let i = 0; i < 5; i++) {
-                if (i < 5 - index) {
-                    labels[i].classList.add('text-yellow-400');
-                    labels[i].classList.remove('text-gray-300');
-                } else {
-                    labels[i].classList.remove('text-yellow-400');
-                    labels[i].classList.add('text-gray-300');
+        // Configuration du système d'étoiles
+        document.querySelectorAll('#star-rating input').forEach((input) => {
+            input.addEventListener('change', () => {
+                updateStarRating(parseInt(input.value));
+            });
+        });
+
+        document.querySelectorAll('#star-rating label').forEach((label, index) => {
+            label.addEventListener('mouseover', () => {
+                const labels = document.querySelectorAll('#star-rating label');
+                for (let i = 0; i < 5; i++) {
+                    if (i < 5 - index) {
+                        labels[i].classList.add('text-yellow-400');
+                        labels[i].classList.remove('text-gray-300');
+                    } else {
+                        labels[i].classList.remove('text-yellow-400');
+                        labels[i].classList.add('text-gray-300');
+                    }
                 }
-            }
-        });
-        label.addEventListener('mouseout', () => {
-            updateStarRating(selectedRating);
+            });
+            
+            label.addEventListener('mouseout', () => {
+                updateStarRating(selectedRating);
+            });
         });
     });
 
-    // Close popups when clicking outside
+    // Fermer les popups en cliquant en dehors
     window.onclick = function(event) {
         const overlay = document.getElementById('overlay');
         if (event.target == overlay) {
@@ -1046,7 +1492,6 @@
             document.getElementById('feedback-section').classList.add('hidden');
             isCommentsExpanded = false;
             isFeedbackFormVisible = false;
-            document.getElementById('feedback-button').textContent = 'Donner un retour';
             resetStarRating();
         }
     }

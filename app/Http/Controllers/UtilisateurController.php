@@ -21,6 +21,12 @@ class UtilisateurController extends Controller
 
     public function store(Request $request)
     {
+        // Vérifier d'abord si l'email existe déjà
+        $existingUser = User::where('email', $request->email)->first();
+        if ($existingUser) {
+            return redirect()->route('admin.utilisateurs.index')->with('email_exists', 'Cette adresse email est déjà utilisée par un autre utilisateur.');
+        }
+
         $data = $request->validate([
             'nom' => 'required|string|max:255',
             'prenom' => 'required|string|max:255',
@@ -45,6 +51,12 @@ class UtilisateurController extends Controller
 
     public function update(Request $request, User $utilisateur) // Type-hint avec User
     {
+        // Vérifier si l'email existe déjà (en excluant l'utilisateur actuel)
+        $existingUser = User::where('email', $request->email)->where('id', '!=', $utilisateur->id)->first();
+        if ($existingUser) {
+            return redirect()->route('admin.utilisateurs.index')->with('email_exists', 'Cette adresse email est déjà utilisée par un autre utilisateur.');
+        }
+
         $data = $request->validate([
             'nom' => 'required|string|max:255',
             'prenom' => 'required|string|max:255',

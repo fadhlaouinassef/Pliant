@@ -427,6 +427,57 @@
             </div>
         </div>
 
+        <!-- Email Exists Popup -->
+        <div 
+            x-show="showEmailExists" 
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 scale-90"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-90"
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
+            @click="showEmailExists = false"
+        >
+            <div class="bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl shadow-2xl max-w-md w-full p-6 border-2 border-orange-200 transform" @click.stop>
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-12 h-12 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center animate-pulse">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.314 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <h3 class="ml-3 text-lg font-bold text-orange-800">Email déjà utilisé</h3>
+                    </div>
+                    <button @click="showEmailExists = false" class="text-orange-400 hover:text-orange-600 transition-colors duration-200">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="bg-white bg-opacity-70 rounded-lg p-4 mb-4">
+                    <p class="text-orange-800 font-medium mb-2">⚠️ Cette adresse email est déjà associée à un compte existant.</p>
+                    <p class="text-orange-700 text-sm">Veuillez utiliser une adresse email différente ou vous connecter si vous possédez déjà un compte.</p>
+                </div>
+                <div class="flex space-x-3">
+                    <button 
+                        @click="showEmailExists = false"
+                        class="flex-1 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-800 font-medium py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-105"
+                    >
+                        Fermer
+                    </button>
+                    <a 
+                        href="{{ route('login') }}"
+                        class="flex-1 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 text-center"
+                    >
+                        Se connecter
+                    </a>
+                </div>
+            </div>
+        </div>
+
         <!-- Global Loading Overlay -->
         <div 
             x-show="loading" 
@@ -451,6 +502,7 @@
             return {
                 loading: false,
                 showError: false,
+                showEmailExists: false,
                 showPassword: false,
                 errorMessage: '',
 
@@ -459,6 +511,11 @@
                     @if($errors->any())
                         this.showError = true;
                         this.errorMessage = this.getErrorMessage();
+                    @endif
+
+                    // Check for email exists error specifically
+                    @if(session('email_exists'))
+                        this.showEmailExistsPopup();
                     @endif
 
                     // Add input animations
@@ -476,6 +533,13 @@
                         return errors.length === 1 ? errors[0] : `${errors.length} erreurs détectées. Veuillez vérifier vos informations.`;
                     }
                     return 'Une erreur est survenue lors de l\'inscription.';
+                },
+
+                showEmailExistsPopup() {
+                    this.showEmailExists = true;
+                    setTimeout(() => {
+                        this.showEmailExists = false;
+                    }, 5000); // Auto fermer après 5 secondes
                 },
 
                 togglePassword() {

@@ -473,6 +473,82 @@
         </div>
     </div>
 
+    <!-- Modal Email Déjà Utilisé -->
+    <div x-show="showEmailExistsModal" class="fixed inset-0 overflow-y-auto z-50" x-cloak>
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 transition-opacity" aria-hidden="true" @click="showEmailExistsModal = false">
+                <div class="absolute inset-0 bg-black opacity-50"></div>
+            </div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true"></span>
+            <div class="inline-block align-middle bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:max-w-lg sm:w-full border-2 border-amber-200"
+                 x-show="showEmailExistsModal" @click.away="showEmailExistsModal = false">
+                
+                <!-- Header avec gradient -->
+                <div class="bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <h3 class="ml-3 text-xl font-bold text-white">Email Déjà Utilisé</h3>
+                        </div>
+                        <button @click="showEmailExistsModal = false" class="text-white hover:text-amber-200 transition-colors duration-200">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Body -->
+                <div class="px-6 py-6">
+                    <div class="bg-white bg-opacity-70 rounded-xl p-4 mb-6 border border-amber-200">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-amber-800 font-semibold mb-1">⚠️ Conflit d'Email Détecté</p>
+                                <p class="text-amber-700 text-sm" x-text="emailExistsMessage"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Suggestions -->
+                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
+                        <h4 class="text-sm font-semibold text-blue-800 mb-2">💡 Suggestions :</h4>
+                        <ul class="text-sm text-blue-700 space-y-1">
+                            <li>• Vérifiez l'orthographe de l'adresse email</li>
+                            <li>• Utilisez une autre adresse email</li>
+                            <li>• Contactez l'utilisateur existant si nécessaire</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="bg-gradient-to-r from-gray-50 to-amber-50 px-6 py-4 flex justify-end space-x-3">
+                    <button 
+                        @click="showEmailExistsModal = false"
+                        class="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                    >
+                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Compris
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast de notification -->
     <div x-show="showToast" 
          x-transition:enter="transition ease-out duration-300"
@@ -647,10 +723,12 @@ function userCrud() {
     return {
         isModalOpen: false,
         isDeleteModalOpen: false,
+        showEmailExistsModal: false,
         isLoading: false,
         showToast: false,
         toastMessage: '',
         toastType: 'info', // 'success', 'error', 'info'
+        emailExistsMessage: '',
         modalTitle: '',
         formAction: '',
         deleteAction: '',
@@ -677,6 +755,10 @@ function userCrud() {
                 this.showToastMessage('{{ session('error') }}', 'error');
             @endif
 
+            @if(session('email_exists'))
+                this.showEmailExistsPopup('{{ session('email_exists') }}');
+            @endif
+
             // Initialiser les utilisateurs filtrés
             this.filteredUsers = @json($utilisateurs->items());
         },
@@ -690,6 +772,14 @@ function userCrud() {
             } else {
                 this.filteredUsers = allUsers.filter(user => user.role === role);
             }
+        },
+        
+        showEmailExistsPopup(message) {
+            this.emailExistsMessage = message;
+            this.showEmailExistsModal = true;
+            setTimeout(() => {
+                this.showEmailExistsModal = false;
+            }, 8000); // Auto fermer après 8 secondes
         },
         
         formatDate(dateString) {

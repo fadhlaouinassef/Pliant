@@ -28,6 +28,14 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request)
     {
+        // Vérifier d'abord si l'email existe déjà
+        $existingUser = User::where('email', $request->email)->first();
+        if ($existingUser) {
+            return back()->withErrors([
+                'email' => 'Cette adresse email est déjà utilisée par un autre compte.'
+            ])->withInput()->with('email_exists', true);
+        }
+
         $request->validate([
             'nom' => ['required', 'string', 'max:255'],
             'prenom' => ['required', 'string', 'max:255'],
