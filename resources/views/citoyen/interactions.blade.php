@@ -1,6 +1,6 @@
 @extends('citoyen.dashboard')
 
-@section('content')
+@section('styles')
 <style>
     /* Animations personnalisées */
     .animation-delay-300 {
@@ -9,60 +9,265 @@
     .animation-delay-700 {
         animation-delay: 700ms;
     }
+    
     /* Effet de flou personnalisé pour glassmorphism */
     .backdrop-blur-glass {
         backdrop-filter: blur(20px) saturate(180%);
-        background-colrgba(255, 255, 255, 0.85);
+        background-color: rgba(255, 255, 255, 0.85);
     }
+    
     /* Gradient animé */
     .gradient-animation {
         background-size: 200% 200%;
         animation: gradient 3s ease infinite;
     }
-    /* Responsive improvements pour les cards */
-    @media (max-width: 640px) {
-        .footer-compact {
-            flex-direction: column;
-            gap: 0.5rem;
+    
+    @keyframes gradient {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    
+    /* Animations de fade in */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
         }
-        .interactions-compact {
-            justify-content: center;
-        }
-        .details-btn-compact {
-            align-self: stretch;
-            justify-content: center;
+        to {
+            opacity: 1;
+            transform: translateY(0);
         }
     }
-</style>
-
-<div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-    <!-- Overlay moderne avec animation -->
-    <div id="overlay" class="hidden fixed inset-0 bg-black/50 backdrop-blur-md z-40 transition-all duration-300"></div>
     
-    <!-- Header Section avec animation -->citoyen.dashboard')
+    .fade-in-up {
+        animation: fadeInUp 0.6s ease-out forwards;
+    }
+    
+    /* Grid forcé pour affichage 3 colonnes sur PC */
+    .reclamations-grid {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 1.5rem !important;
+        width: 100% !important;
+    }
+    
+    .reclamations-grid > * {
+        width: 100% !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Responsive breakpoints */
+    @media (max-width: 768px) {
+        .reclamations-grid {
+            grid-template-columns: 1fr !important;
+        }
+    }
+    
+    @media (min-width: 769px) and (max-width: 1024px) {
+        .reclamations-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+    }
+    
+    @media (min-width: 1025px) {
+        .reclamations-grid {
+            grid-template-columns: repeat(3, 1fr) !important;
+        }
+    }
+    
+    .card-grid {
+        display: grid !important;
+        width: 100% !important;
+        gap: 1.5rem !important;
+    }
+    
+    @media (max-width: 639px) {
+        .card-grid {
+            grid-template-columns: 1fr !important;
+        }
+    }
+    
+    @media (min-width: 640px) and (max-width: 1023px) {
+        .card-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+    }
+    
+    @media (min-width: 1024px) {
+        .card-grid {
+            grid-template-columns: repeat(3, 1fr) !important;
+        }
+    }
+    
+    .card-item {
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        position: relative !important;
+        max-width: none !important;
+        box-sizing: border-box !important;
+    }
+    
+    .card-compact {
+        max-width: 100%;
+        width: 100%;
+    }
+    
+    .footer-compact {
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: stretch;
+    }
+    
+    @media (min-width: 640px) {
+        .footer-compact {
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+        }
+    }
+    
+    .interactions-compact {
+        justify-content: space-between;
+        width: 100%;
+    }
+    
+    @media (min-width: 640px) {
+        .interactions-compact {
+            justify-content: flex-start;
+            width: auto;
+        }
+    }
+    
+    .details-btn-compact {
+        align-self: stretch;
+        justify-content: center;
+        width: 100%;
+    }
+    
+    @media (min-width: 640px) {
+        .details-btn-compact {
+            align-self: auto;
+            width: auto;
+        }
+    }
+    
+    /* Amélioration des boutons d'interaction */
+    .interaction-button {
+        transition: all 0.2s ease-in-out;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .interaction-button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .interaction-button.active {
+        background: linear-gradient(135deg, #3B82F6, #1E40AF);
+        color: white;
+        box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+    }
+    
+    /* Animation pour les cards */
+    .card-hover {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .card-hover:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+    
+    /* Effet de brillance sur les boutons */
+    .shine-effect::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        transition: left 0.5s ease;
+    }
+    
+    .shine-effect:hover::before {
+        left: 100%;
+    }
+    
+    /* Scrollbar personnalisée */
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 10px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, #3B82F6, #1E40AF);
+        border-radius: 10px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(135deg, #1E40AF, #1E3A8A);
+    }
+</style>
+@endsection
 
 @section('content')
 <div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
     <!-- Overlay moderne avec animation -->
-    <div id="overlay" class="hidden fixed inset-0 bg-black/50 backdrop-blur-md z-40 transition-all duration-300"></div>
-    
-                                       <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14H5.236a2 2 0 00-1.789 2.894l-3.5 7A2 2 0 008.736 21h4.018c.163 0 .326-.02.485-.06L17 20m-7-6V4h6m-6 10h6"></path>
-                                    </svg>-- Header Section avec animation -->
-    <div class="relative pt-8 pb-6">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-12">
-                <div class="inline-flex items-center justify-center p-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full mb-6 shadow-lg transform hover:scale-105 transition-all duration-300">
-                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div id="overlay" class="hidden fixed inset-0 bg-black/60 backdrop-blur-md z-40 transition-all duration-300"></div>
+    <!-- Header Section avec animation -->
+    <div class="relative pt-12 pb-8">
+        <!-- Particules décoratives -->
+        <div class="absolute inset-0 overflow-hidden pointer-events-none">
+            <div class="absolute -top-10 -left-10 w-20 h-20 bg-blue-200 rounded-full opacity-30 animate-pulse"></div>
+            <div class="absolute top-1/2 -right-10 w-16 h-16 bg-purple-200 rounded-full opacity-20 animate-bounce animation-delay-300"></div>
+            <div class="absolute bottom-10 left-1/4 w-12 h-12 bg-indigo-200 rounded-full opacity-25 animate-pulse animation-delay-700"></div>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+            <div class="text-center mb-12 fade-in-up">
+                <!-- Icône principale avec effet glassmorphism -->
+                <div class="inline-flex items-center justify-center p-4 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 rounded-2xl mb-6 shadow-xl transform hover:scale-110 transition-all duration-300 backdrop-blur-glass">
+                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
                     </svg>
                 </div>
-                <h1 class="text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 bg-clip-text text-transparent mb-4">
+
+                <!-- Titre principal avec gradient de texte -->
+                <h1 class="text-5xl md:text-6xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 bg-clip-text text-transparent mb-6 leading-tight">
                     Mes Réclamations
                 </h1>
-                <p class="text-lg text-gray-600 max-w-2xl mx-auto">
-                    Suivez l'évolution de vos réclamations et interagissez avec la communauté
+
+                <!-- Sous-titre moderne -->
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+                    Suivez l'évolution de vos réclamations, interagissez avec la communauté et 
+                    <span class="text-blue-600 font-semibold">faites entendre votre voix</span>
                 </p>
+
+                <!-- Statistiques rapides -->
+                <div class="flex flex-wrap justify-center gap-8 mt-8">
+                    <div class="bg-white/70 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/20 shadow-lg">
+                        <div class="text-2xl font-bold text-blue-600">{{ $reclamations->count() }}</div>
+                        <div class="text-sm text-gray-600">Réclamations</div>
+                    </div>
+                    <div class="bg-white/70 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/20 shadow-lg">
+                        <div class="text-2xl font-bold text-green-600">{{ $reclamations->where('status', 'résolue')->count() }}</div>
+                        <div class="text-sm text-gray-600">Résolues</div>
+                    </div>
+                    <div class="bg-white/70 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/20 shadow-lg">
+                        <div class="text-2xl font-bold text-orange-600">{{ $reclamations->where('status', 'en cours')->count() }}</div>
+                        <div class="text-sm text-gray-600">En cours</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -70,31 +275,35 @@
     <!-- Popup moderne pour voir les détails d'une réclamation -->
     <div id="detailsPopup" class="hidden fixed inset-0 z-50 overflow-y-auto">
         <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <!-- Background overlay avec animation -->
-            <div class="fixed inset-0 transition-opacity" onclick="closePopup('detailsPopup')">
-                <div class="absolute inset-0 bg-gray-900/75 backdrop-blur-sm"></div>
+            <!-- Background overlay avec animation améliorée -->
+            <div class="fixed inset-0 transition-opacity duration-300" onclick="closePopup('detailsPopup')">
+                <div class="absolute inset-0 bg-gray-900/80 backdrop-blur-md"></div>
             </div>
 
-            <!-- Modal panel avec animations et glassmorphism -->
-            <div class="inline-block w-full max-w-4xl my-8 overflow-hidden text-left align-middle transition-all transform bg-white/95 backdrop-blur-xl shadow-2xl rounded-3xl border border-white/20">
+            <!-- Modal panel avec design moderne -->
+            <div class="inline-block w-full max-w-5xl my-8 overflow-hidden text-left align-middle transition-all transform bg-white rounded-3xl shadow-2xl border border-gray-100">
                 
-                <!-- Header avec gradient moderne -->
-                <div class="relative bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 px-8 py-8">
-                    <div class="absolute inset-0 bg-black/10"></div>
+                <!-- Header avec gradient moderne et glassmorphism -->
+                <div class="relative bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 px-8 py-8">
+                    <!-- Pattern de fond décoratif -->
+                    <div class="absolute inset-0 opacity-10">
+                        <div class="absolute inset-0" style="background-image: radial-gradient(circle at 25% 25%, white 2px, transparent 2px), radial-gradient(circle at 75% 75%, white 2px, transparent 2px); background-size: 50px 50px;"></div>
+                    </div>
+                    
                     <div class="relative">
-                        <div class="flex justify-between items-start mb-4">
+                        <div class="flex justify-between items-start mb-6">
                             <div class="flex items-center space-x-4">
-                                <div class="p-3 bg-white/20 backdrop-blur rounded-full">
-                                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="p-4 bg-white/20 backdrop-blur-sm rounded-2xl border border-white/30">
+                                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                     </svg>
                                 </div>
                                 <div>
-                                    <h3 class="text-2xl font-bold text-white mb-1">Détails de la réclamation</h3>
-                                    <p class="text-blue-100">Informations complètes et interactions</p>
+                                    <h3 class="text-3xl font-bold text-white mb-2">Détails de la réclamation</h3>
+                                    <p class="text-blue-100 text-lg">Informations complètes et interactions</p>
                                 </div>
                             </div>
-                            <button onclick="closePopup('detailsPopup')" class="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-full transition-all duration-200">
+                            <button onclick="closePopup('detailsPopup')" class="p-3 text-white/80 hover:text-white hover:bg-white/20 rounded-2xl transition-all duration-300 transform hover:scale-105">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                 </svg>
@@ -102,9 +311,9 @@
                         </div>
                         
                         <!-- Titre et description dans le header -->
-                        <div class="bg-white/10 backdrop-blur rounded-2xl p-6 border border-white/20">
-                            <h4 class="text-xl font-semibold text-white mb-3" id="reclamation-title"></h4>
-                            <p class="text-blue-100 leading-relaxed" id="reclamation-description"></p>
+                        <div class="bg-white/15 backdrop-blur-sm rounded-3xl p-8 border border-white/30">
+                            <h4 class="text-2xl font-bold text-white mb-4 leading-tight" id="reclamation-title"></h4>
+                            <p class="text-blue-100 leading-relaxed text-lg" id="reclamation-description"></p>
                         </div>
                     </div>
                 </div>
@@ -213,42 +422,42 @@
             </div>
         </div>
     </div>
-    
     <!-- Container principal des réclamations -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
         @if(isset($reclamations) && $reclamations->count() > 0)
             <!-- Grid responsive des réclamations -->
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+            <div class="reclamations-grid" style="display: grid !important; grid-template-columns: 1fr 1fr 1fr !important; gap: 1.5rem !important; width: 100% !important;">
                 @foreach($reclamations as $reclamation)
-                    <div class="group relative bg-white/70 backdrop-blur-sm rounded-3xl shadow-lg hover:shadow-2xl border border-white/20 overflow-hidden transform transition-all duration-500 hover:-translate-y-2 hover:scale-[1.02]">
+                    <div class="card-item relative bg-white/80 backdrop-blur-sm rounded-3xl shadow-lg border border-white/30 overflow-hidden transform transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 hover:scale-[1.02]" style="width: 100% !important; display: block !important;">
                         
-                        <!-- Indicateur de statut coloré -->
-                        <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r 
-                            @if($reclamation->status == 'résolue') from-green-400 to-green-600
-                            @elseif($reclamation->status == 'rejetée') from-red-400 to-red-600
-                            @elseif($reclamation->status == 'en cours') from-blue-400 to-blue-600
-                            @else from-orange-400 to-orange-600 @endif">
+                        <!-- Indicateur de statut coloré avec animation -->
+                        <div class="absolute top-0 left-0 right-0 h-1.5 
+                            @if($reclamation->status == 'résolue') bg-gradient-to-r from-emerald-400 to-green-600
+                            @elseif($reclamation->status == 'rejetée') bg-gradient-to-r from-red-400 to-rose-600
+                            @elseif($reclamation->status == 'en cours') bg-gradient-to-r from-blue-400 to-indigo-600
+                            @else bg-gradient-to-r from-amber-400 to-orange-600 @endif">
+                            <div class="h-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
                         </div>
 
-                        <!-- Header de la card -->
+                        <!-- Header de la card avec design amélioré -->
                         <div class="p-6 pb-4">
                             <div class="flex justify-between items-start mb-4">
-                                <h2 class="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-300 line-clamp-2 flex-1 mr-4">
+                                <h2 class="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-300 line-clamp-2 flex-1 mr-4 leading-tight">
                                     {{ $reclamation->titre }}
                                 </h2>
-                                <div class="relative">
+                                <div class="relative flex-shrink-0">
                                     <span class="inline-flex items-center px-3 py-1.5 
-                                        @if($reclamation->status == 'résolue') bg-green-100 text-green-800 border-green-200
+                                        @if($reclamation->status == 'résolue') bg-emerald-100 text-emerald-800 border-emerald-200
                                         @elseif($reclamation->status == 'rejetée') bg-red-100 text-red-800 border-red-200
                                         @elseif($reclamation->status == 'en cours') bg-blue-100 text-blue-800 border-blue-200
                                         @else bg-orange-100 text-orange-800 border-orange-200 @endif
-                                        text-xs font-semibold rounded-full border backdrop-blur-sm">
+                                        text-xs font-semibold rounded-full border backdrop-blur-sm shadow-sm">
                                         
                                         <div class="w-2 h-2 mr-2 rounded-full 
-                                            @if($reclamation->status == 'résolue') bg-green-500
+                                            @if($reclamation->status == 'résolue') bg-emerald-500
                                             @elseif($reclamation->status == 'rejetée') bg-red-500
                                             @elseif($reclamation->status == 'en cours') bg-blue-500 animate-pulse
-                                            @else bg-orange-500 @endif">
+                                            @else bg-orange-500 animate-pulse @endif">
                                         </div>
                                         
                                         {{ ucfirst($reclamation->status) }}
@@ -256,10 +465,10 @@
                                 </div>
                             </div>
                             
-                            <!-- Description avec gradient fade -->
+                            <!-- Description avec gradient fade amélioré -->
                             <div class="relative">
                                 <p class="text-gray-600 leading-relaxed mb-4 line-clamp-3">{{ Str::limit($reclamation->description, 150) }}</p>
-                                <div class="absolute bottom-0 right-0 w-8 h-4 bg-gradient-to-l from-white/70 to-transparent pointer-events-none"></div>
+                                <div class="absolute bottom-0 right-0 w-12 h-6 bg-gradient-to-l from-white/80 to-transparent pointer-events-none rounded-tl-lg"></div>
                             </div>
                         </div>
 
@@ -399,57 +608,88 @@
                             </button>
                         </div>
                     </div>
-                    
-                     
-                        </div>
-                        
-                    </div>
-                </div>
-            @endforeach
-        </div>
-    @else
-            <!-- État vide moderne -->
-            <div class="text-center py-20">
-                <div class="max-w-md mx-auto">
-                    <!-- Illustration moderne -->
-                    <div class="relative mb-8">
-                        <div class="w-32 h-32 mx-auto bg-gradient-to-br from-blue-100 to-indigo-200 rounded-full flex items-center justify-center">
-                            <svg class="w-16 h-16 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                @endforeach
+            </div>
+        @else
+            <!-- État vide moderne et attrayant -->
+            <div class="text-center py-24">
+                <div class="max-w-lg mx-auto fade-in-up">
+                    <!-- Illustration moderne avec animation -->
+                    <div class="relative mb-10">
+                        <div class="w-40 h-40 mx-auto bg-gradient-to-br from-blue-100 via-purple-100 to-indigo-200 rounded-full flex items-center justify-center shadow-lg transform hover:scale-105 transition-all duration-300">
+                            <svg class="w-20 h-20 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                         </div>
                         <!-- Cercles décoratifs animés -->
-                        <div class="absolute top-0 left-1/4 w-6 h-6 bg-blue-400/30 rounded-full animate-bounce"></div>
-                        <div class="absolute top-8 right-1/4 w-4 h-4 bg-purple-400/30 rounded-full animate-bounce animation-delay-300"></div>
-                        <div class="absolute bottom-4 left-1/3 w-3 h-3 bg-indigo-400/30 rounded-full animate-bounce animation-delay-700"></div>
+                        <div class="absolute -top-2 left-8 w-8 h-8 bg-blue-400/40 rounded-full animate-bounce"></div>
+                        <div class="absolute top-12 -right-4 w-6 h-6 bg-purple-400/30 rounded-full animate-bounce animation-delay-300"></div>
+                        <div class="absolute -bottom-4 left-1/3 w-5 h-5 bg-indigo-400/35 rounded-full animate-bounce animation-delay-700"></div>
+                        <div class="absolute top-4 left-1/4 w-4 h-4 bg-pink-400/25 rounded-full animate-pulse"></div>
                     </div>
                     
-                    <h3 class="text-2xl font-bold text-gray-900 mb-3">Aucune réclamation trouvée</h3>
-                    <p class="text-gray-600 text-lg mb-8 leading-relaxed">
-                        Vous n'avez pas encore créé de réclamation.<br>
-                        <span class="text-sm text-gray-500">Commencez à faire entendre votre voix dans votre communauté.</span>
-                    </p>
+                    <!-- Titre principal -->
+                    <h3 class="text-3xl font-bold text-gray-900 mb-4 leading-tight">
+                        Aucune réclamation trouvée
+                    </h3>
                     
-                    <!-- Call to action -->
-                    <div class="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl p-8 border border-blue-200/50">
-                        <h4 class="text-lg font-semibold text-gray-900 mb-2">Prêt à commencer ?</h4>
-                        <p class="text-gray-600 mb-4">Créez votre première réclamation et rejoignez la conversation.</p>
-                        <button class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-200 transform hover:scale-105">
-                            Créer une réclamation
-                        </button>
+                    <!-- Description avec typographie améliorée -->
+                    <div class="space-y-3 mb-10">
+                        <p class="text-xl text-gray-600 leading-relaxed">
+                            Vous n'avez pas encore créé de réclamation.
+                        </p>
+                        <p class="text-gray-500 max-w-md mx-auto">
+                            Commencez à faire entendre votre voix dans votre communauté et contribuez à l'amélioration de votre environnement.
+                        </p>
+                    </div>
+                    
+                    <!-- Call to action avec design moderne -->
+                    <div class="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-3xl p-8 border-2 border-blue-100/50 shadow-lg backdrop-blur-sm">
+                        <div class="flex items-center justify-center mb-4">
+                            <div class="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                </svg>
+                            </div>
+                        </div>
+                        
+                        <h4 class="text-xl font-bold text-gray-900 mb-3">Prêt à commencer ?</h4>
+                        <p class="text-gray-600 mb-6 leading-relaxed">
+                            Créez votre première réclamation et rejoignez la conversation citoyenne.
+                        </p>
+                        
+                        <a href="{{ route('citoyen.reclamations.create') }}" class="inline-flex items-center gap-3 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700 text-white px-8 py-4 rounded-2xl font-bold hover:from-blue-700 hover:via-purple-700 hover:to-indigo-800 transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                            <span>Créer une réclamation</span>
+                        </a>
                     </div>
                 </div>
             </div>
-    @endif
+        @endif
 </div>
 
-<!-- Notification Popup -->
-    <div id="notification-popup" class="hidden fixed bottom-4 right-4 z-50 max-w-sm bg-white rounded-lg shadow-xl border border-gray-200 p-4">
+<!-- Notification Popup moderne -->
+<div id="notification-popup" class="hidden fixed bottom-6 right-6 z-50 max-w-sm">
+    <div class="bg-white rounded-2xl shadow-2xl border border-gray-200 p-4 backdrop-blur-sm transform transition-all duration-300 hover:scale-105">
         <div class="flex items-center space-x-3">
-            <div id="notification-icon" class="w-6 h-6 flex-shrink-0"></div>
-            <span id="notification-message" class="text-sm text-gray-700"></span>
+            <div id="notification-icon" class="w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center"></div>
+            <div class="flex-1">
+                <span id="notification-message" class="text-sm font-medium text-gray-700 block leading-relaxed"></span>
+            </div>
+            <button onclick="document.getElementById('notification-popup').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 transition-colors duration-200">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <!-- Progress bar pour les notifications temporaires -->
+        <div id="notification-progress" class="hidden mt-3 h-1 bg-gray-200 rounded-full overflow-hidden">
+            <div class="h-full bg-gradient-to-r from-blue-500 to-purple-600 transition-all duration-3000 ease-linear w-full"></div>
         </div>
     </div>
+</div>
 
 <script>
     // Set up CSRF token for AJAX requests
@@ -457,47 +697,56 @@
     let isCommentsExpanded = false;
     let currentReclamationId = null;
 
-    // Function to show notification popup
+    // Function to show notification popup avec design amélioré
     function showNotification(status, message) {
         const popup = document.getElementById('notification-popup');
         const icon = document.getElementById('notification-icon');
         const messageElement = document.getElementById('notification-message');
+        const progress = document.getElementById('notification-progress');
 
         // Reset popup classes and content
-        popup.classList.remove('hidden', 'bg-green-100', 'bg-red-100', 'bg-gray-100');
-        icon.className = 'w-6 h-6 flex-shrink-0';
+        popup.classList.remove('hidden');
+        icon.className = 'w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center';
         icon.innerHTML = '';
         messageElement.textContent = message;
+        progress.classList.add('hidden');
 
         if (status === 'loading') {
-            popup.classList.add('bg-gray-100');
+            icon.className += ' bg-blue-100';
             icon.innerHTML = `
-                <svg class="animate-spin w-6 h-6 text-gray-600" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <svg class="animate-spin w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>`;
         } else if (status === 'success') {
-            popup.classList.add('bg-green-100');
+            icon.className += ' bg-green-100';
             icon.innerHTML = `
-                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                 </svg>`;
+            progress.classList.remove('hidden');
+            setTimeout(() => progress.querySelector('div').style.width = '0%', 100);
         } else if (status === 'error') {
-            popup.classList.add('bg-red-100');
+            icon.className += ' bg-red-100';
             icon.innerHTML = `
-                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>`;
+            progress.classList.remove('hidden');
+            setTimeout(() => progress.querySelector('div').style.width = '0%', 100);
         }
 
-        // Show popup
+        // Show popup avec animation
         popup.classList.remove('hidden');
+        popup.style.transform = 'translateX(100%)';
+        setTimeout(() => popup.style.transform = 'translateX(0)', 10);
 
-        // Auto-hide after 3 seconds for success/error
+        // Auto-hide après 4 secondes pour success/error
         if (status !== 'loading') {
             setTimeout(() => {
-                popup.classList.add('hidden');
-            }, 3000);
+                popup.style.transform = 'translateX(100%)';
+                setTimeout(() => popup.classList.add('hidden'), 300);
+            }, 4000);
         }
     }
 
